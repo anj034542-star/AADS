@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  background: #f1f5f9;
+}
+
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  color: white;
+  padding: 20px;
+}
+
+.sidebar h2 {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.sidebar a {
+  display: block;
+  padding: 12px;
+  margin-bottom: 10px;
+  color: #cbd5f5;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.sidebar a:hover {
+  background: #334155;
+  color: white;
+}
+
+.main {
+  flex: 1;
+  padding: 30px;
+}
+
+#docForm {
+  display: none;
+  margin-top: 15px;
+}
+
+button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #2563eb;
+  color: white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>Office Panel</h2>
+  <a href="#">Dashboard</a>
+  <a href="/logout">Logout</a>
+</div>
+
+<div class="main">
+
+  <h1>Office Document System</h1>
+
+  <button onclick="toggleForm()">+ Upload Document</button>
+
+  <div id="docForm">
+    <input type="text" id="docTitle" placeholder="Title"><br><br>
+    <textarea id="docDesc" placeholder="Description"></textarea><br><br>
+
+    <select id="docOffice">
+      <option value="">Select Office</option>
+      <option value="Office 1">Office 1</option>
+      <option value="Office 2">Office 2</option>
+      <option value="Office 3">Office 3</option>
+    </select><br><br>
+
+    <input type="file" id="docFile" accept=".doc,.docx,.xls,.xlsx"><br><br>
+
+    <button onclick="saveDocument()">Upload</button>
+  </div>
+
+  <div id="documentsList"></div>
+
+</div>
+
+<script>
+
+function toggleForm() {
+  const form = document.getElementById('docForm');
+  form.style.display = form.style.display === 'block' ? 'none' : 'block';
+}
+
+// ================= UPLOAD =================
+function saveDocument() {
+  const title = document.getElementById('docTitle').value.trim();
+  const desc = document.getElementById('docDesc').value.trim();
+  const office = document.getElementById('docOffice').value;
+  const fileInput = document.getElementById('docFile');
+
+  if (!title || !desc || !office || !fileInput.files.length) {
+    alert("All fields required!");
+    return;
+  }
+
+  const file = fileInput.files[0];
+
+  const allowed = ['doc','docx','xls','xlsx'];
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (!allowed.includes(ext)) {
+    alert("Only Word/Excel allowed!");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("desc", desc);
+  formData.append("office", office);
+  formData.append("file", file);
+
+  fetch('/upload', {
+    method: 'POST',
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+
+    addToList(data);
+
+    document.getElementById('docTitle').value = '';
+    document.getElementById('docDesc').value = '';
+    document.getElementById('docOffice').value = '';
+    fileInput.value = '';
+    document.getElementById('docForm').style.display = 'none';
+  });
+}
+
+// ================= DISPLAY =================
+function addToList(doc) {
+  const list = document.getElementById('documentsList');
+  const div = document.createElement('div');
+
+  let color = "#f59e0b";
+  let status = doc.status || "Pending ⏳";
+
+  // ✅ FIXED STATUS CHECK
+  if (doc.status && doc.status.includes("APPROVED")) {
+    color = "#22c55e";
+    status = "Approved ✅";
+  }
+
+  if (doc.status && doc.status.includes("DECLINED")) {
+    color = "#ef4444";
+    status = "Declined ❌";
+  }
+
+  div.style.background = "white";
+  div.style.padding = "15px";
+  div.style.marginBottom = "10px";
+  div.style.borderLeft = `6px solid ${color}`;
+  div.style.borderRadius = "10px";
+
+  div.innerHTML = `
+    <strong>${doc.title}</strong>
+    <p>${doc.desc}</p>
+    <p><b>Office:</b> ${doc.office || "N/A"}</p>
+
+    <p style="color:${color}; font-weight:bold;">
+      ${status}
+    </p>
+
+    <a href="/download/${doc.filename}" target="_blank">Open File</a>
+  `;
+
+  list.appendChild(div);
+}
+
+// ================= LOAD =================
+window.onload = function() {
+  fetch('/documents')
+    .then(res => res.json())
+    .then(data => {
+      data.forEach(doc => addToList(doc));
+    });
+}
+
+</script>
+
+</body>
+</html>
