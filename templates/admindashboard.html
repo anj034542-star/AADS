@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Office 1 Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #eef2f7, #dbe6ff);
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            background: #1f3c88;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            transform: scale(1.01);
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .desc {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .status {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .declined {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .approve {
+            background: #28a745;
+            color: white;
+        }
+
+        .decline {
+            background: #dc3545;
+            color: white;
+        }
+
+        .download {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .topbar {
+            text-align: center;
+            margin: 15px 0;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="header">
+    <h2>🏢 Office 1 Dashboard</h2>
+    <p>Document Receiving & Approval System</p>
+</div>
+
+<div class="container">
+
+    <div class="topbar">
+        <h3>Incoming Documents</h3>
+    </div>
+
+    <div id="docs"></div>
+
+</div>
+
+<script>
+
+function getStatusClass(status) {
+    if (status.includes("Pending")) return "status pending";
+    if (status.includes("APPROVED")) return "status approved";
+    if (status.includes("DECLINED")) return "status declined";
+    return "status";
+}
+
+function loadDocs() {
+    fetch('/documents')
+        .then(res => res.json())
+        .then(data => {
+            let box = document.getElementById("docs");
+            box.innerHTML = "";
+
+            if (data.length === 0) {
+                box.innerHTML = "<p style='text-align:center;'>No documents found.</p>";
+                return;
+            }
+
+            data.forEach(doc => {
+                box.innerHTML += `
+                    <div class="card">
+                        <div class="title">${doc.title}</div>
+                        <div class="desc">${doc.desc || ""}</div>
+
+                        <div class="${getStatusClass(doc.status)}">
+                            ${doc.status}
+                        </div>
+
+                        <br>
+
+                        <a class="download" href="/download/${doc.filename}">
+                            📥 Download File
+                        </a>
+
+                        <br>
+
+                        <button class="btn approve" onclick="approveDoc('${doc.filename}')">
+                            ✔ Approve
+                        </button>
+
+                        <button class="btn decline" onclick="declineDoc('${doc.filename}')">
+                            ❌ Decline
+                        </button>
+                    </div>
+                `;
+            });
+        });
+}
+
+// APPROVE
+function approveDoc(filename) {
+    fetch('/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            filename: filename,
+            action: 'approve'
+        })
+    }).then(() => loadDocs());
+}
+
+// DECLINE (REQUIRES REASON)
+function declineDoc(filename) {
+    let remarks = prompt("⚠ Please enter reason for declining:");
+
+    if (!remarks || remarks.trim() === "") {
+        alert("Reason is required to decline!");
+        return;
+    }
+
+    fetch('/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            filename: filename,
+            action: 'decline',
+            remarks: remarks
+        })
+    }).then(() => loadDocs());
+}
+
+// AUTO LOAD
+loadDocs();
+setInterval(loadDocs, 5000);
+
+</script>
+
+</body>
+</html>

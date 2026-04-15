@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Office 3 Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f0f4f8;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .status {
+            font-weight: bold;
+            color: #1b5e20;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin-right: 6px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .approve {
+            background: #28a745;
+            color: white;
+        }
+
+        .decline {
+            background: #dc3545;
+            color: white;
+        }
+
+        .download {
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+
+        h2 {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h2>🏢 Office 3 Dashboard</h2>
+    <p>Final Approval Stage (Last Office)</p>
+
+    <div id="docs"></div>
+
+</div>
+
+<script>
+
+function loadDocs() {
+    fetch('/documents')
+        .then(res => res.json())
+        .then(data => {
+            let box = document.getElementById("docs");
+            box.innerHTML = "";
+
+            if (data.length === 0) {
+                box.innerHTML = "<p>No documents for final review.</p>";
+                return;
+            }
+
+            data.forEach(doc => {
+                box.innerHTML += `
+                    <div class="card">
+                        <div class="title">${doc.title}</div>
+                        <p>${doc.desc}</p>
+
+                        <p>Status: <span class="status">${doc.status}</span></p>
+
+                        <a class="download" href="/download/${doc.filename}">Download</a>
+
+                        <br><br>
+
+                        <button class="approve" onclick="finalApprove('${doc.filename}')">
+                            Final Approve
+                        </button>
+
+                        <button class="decline" onclick="declineDoc('${doc.filename}')">
+                            Decline
+                        </button>
+                    </div>
+                `;
+            });
+        });
+}
+
+// FINAL APPROVE (stays in Office 3 but marked DONE)
+function finalApprove(filename) {
+    fetch('/process', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filename: filename,
+            action: 'approve'
+        })
+    })
+    .then(() => loadDocs());
+}
+
+// DECLINE
+function declineDoc(filename) {
+    let remarks = prompt("Enter remarks:");
+
+    fetch('/process', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filename: filename,
+            action: 'decline',
+            remarks: remarks
+        })
+    })
+    .then(() => loadDocs());
+}
+
+// AUTO LOAD
+loadDocs();
+
+// AUTO REFRESH (optional)
+setInterval(loadDocs, 5000);
+
+</script>
+
+</body>
+</html>
