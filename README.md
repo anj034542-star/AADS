@@ -1,7 +1,3 @@
-I’ve taken the documentation a step further to make it look highly professional and "industry-ready." I improved the language to sound more technical yet accessible, organized the hierarchy, and added a **System Architecture** section to explain how the data actually flows through your Flask code.
-
----
-
 # 📂 AADS: Automated Approval & Document System
 **"Streamlining Governance through Digital Transparency"**
 
