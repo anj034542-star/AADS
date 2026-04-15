@@ -88,3 +88,7 @@ Administrators have elevated privileges to:
 * **System Logs:** Track which office handled which document and at what time.
 
 ---
+
+### **Modules**
+
+Module 1: We have finished creating the user dashboard. When a user clicks 'Upload Document,a form will appear. First, the user must enter a Title and a Description. Next, they should click 'Select Office' and choose Office 1 as a starting of passing your document on those 3 offices options. Then a user can select a file; we currently support Word, Excel, and DOC formats. Once uploaded, the file will automatically appear on the Office 1 dashboard.
