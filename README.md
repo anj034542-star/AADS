@@ -49,7 +49,7 @@ Befor running the project, ensure you have the following installed.
 ________________________________________________________________
 # **Installation & Setup**
 
-1. Clone or Create the Project Folder Place the billing system folder in your desired directory.
+1. Clone or Create the Project Folder Place the **AADS** system folder in your desired directory.
 
 2. Install Flask Open your terminal and run
 
