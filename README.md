@@ -88,5 +88,3 @@ Administrators have elevated privileges to:
 * **System Logs:** Track which office handled which document and at what time.
 
 ---
-
-> **Security Warning:** The `app.secret_key` and **Admin UIDs** should be changed before deploying the system to a production environment to ensure maximum data protection.
