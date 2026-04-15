@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Office 3 Dashboard</title>
+    <title>Office 2 Dashboard</title>
     <style>
         body {
             font-family: Arial;
-            background: #f0f4f8;
+            background: #eef2f7;
             margin: 0;
             padding: 20px;
         }
@@ -20,7 +20,7 @@
             padding: 15px;
             margin-bottom: 12px;
             border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
         .title {
@@ -30,7 +30,7 @@
 
         .status {
             font-weight: bold;
-            color: #1b5e20;
+            color: #2e7d32;
         }
 
         button {
@@ -68,8 +68,8 @@
 
 <div class="container">
 
-    <h2>🏢 Office 3 Dashboard</h2>
-    <p>Final Approval Stage (Last Office)</p>
+    <h2>🏢 Office 2 Dashboard</h2>
+    <p>Documents forwarded from Office 1</p>
 
     <div id="docs"></div>
 
@@ -85,7 +85,7 @@ function loadDocs() {
             box.innerHTML = "";
 
             if (data.length === 0) {
-                box.innerHTML = "<p>No documents for final review.</p>";
+                box.innerHTML = "<p>No documents for Office 2.</p>";
                 return;
             }
 
@@ -101,21 +101,16 @@ function loadDocs() {
 
                         <br><br>
 
-                        <button class="approve" onclick="finalApprove('${doc.filename}')">
-                            Final Approve
-                        </button>
-
-                        <button class="decline" onclick="declineDoc('${doc.filename}')">
-                            Decline
-                        </button>
+                        <button class="approve" onclick="approveDoc('${doc.filename}')">Approve</button>
+                        <button class="decline" onclick="declineDoc('${doc.filename}')">Decline</button>
                     </div>
                 `;
             });
         });
 }
 
-// FINAL APPROVE (stays in Office 3 but marked DONE)
-function finalApprove(filename) {
+// APPROVE → SEND TO OFFICE 3
+function approveDoc(filename) {
     fetch('/process', {
         method: 'POST',
         headers: {
@@ -125,8 +120,7 @@ function finalApprove(filename) {
             filename: filename,
             action: 'approve'
         })
-    })
-    .then(() => loadDocs());
+    }).then(() => loadDocs());
 }
 
 // DECLINE
@@ -143,14 +137,13 @@ function declineDoc(filename) {
             action: 'decline',
             remarks: remarks
         })
-    })
-    .then(() => loadDocs());
+    }).then(() => loadDocs());
 }
 
 // AUTO LOAD
 loadDocs();
 
-// AUTO REFRESH (optional)
+// OPTIONAL AUTO REFRESH
 setInterval(loadDocs, 5000);
 
 </script>
