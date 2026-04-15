@@ -91,6 +91,6 @@ Administrators have elevated privileges to:
 
 ### **Modules**
 
-Module 1: We have finished creating the user dashboard. When a user clicks 'Upload Document,a form will appear. First, the user must enter a Title and a Description. Next, they should click 'Select Office' and choose Office 1 as a starting of passing your document on those 3 offices options. Then a user can select a file; we currently support Word, Excel, and DOC formats. Once uploaded, the file will automatically appear on the Office 1 dashboard.
+Module 1:We have finished creating the user dashboard. When a user clicks 'Upload Document,' a form will appear. First, the user must enter a title and a description. Next, they select 'Select Office' and choose 'Office 1' to initiate the routing process through the three office options. The user can then select a file; we currently support Word, Excel, and DOC formats. Once the file is uploaded, a 'Pending' status will display, and the document will automatically appear on the Office 1 dashboard.
 
 Module 2:"We are creating a dashboard for Office 1, Office 2, and Office 3. Each dashboard will feature options to Download Document, Approve, and Decline. If a user at any office selects 'Decline,' they must provide a reason. While Offices 1 and 2 share the same functionality, Office 3 acts as the final approval stage. The process begins when a user uploads a document; only then will the download and approval options become visible on the office dashboards."
