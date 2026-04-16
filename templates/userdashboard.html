@@ -144,6 +144,10 @@ function saveDocument() {
     document.getElementById('docOffice').value = '';
     fileInput.value = '';
     document.getElementById('docForm').style.display = 'none';
+  })
+  .catch(err => {
+    alert("Upload failed!");
+    console.error(err);
   });
 }
 
@@ -155,7 +159,6 @@ function addToList(doc) {
   let color = "#f59e0b";
   let status = doc.status || "Pending ⏳";
 
-  // ✅ FIXED STATUS CHECK
   if (doc.status && doc.status.includes("APPROVED")) {
     color = "#22c55e";
     status = "Approved ✅";
@@ -181,7 +184,7 @@ function addToList(doc) {
       ${status}
     </p>
 
-    <a href="/download/${doc.filename}" target="_blank">Open File</a>
+    <a href="/uploads/${doc.filename}" target="_blank">Open File</a>
   `;
 
   list.appendChild(div);
@@ -193,7 +196,8 @@ window.onload = function() {
     .then(res => res.json())
     .then(data => {
       data.forEach(doc => addToList(doc));
-    });
+    })
+    .catch(err => console.error(err));
 }
 
 </script>
