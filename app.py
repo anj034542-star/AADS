@@ -1,6 +1,7 @@
 import random
 import os
-from flask import Flask, render_template, redirect, request, session, jsonify, send_from_directory
+from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -18,7 +19,6 @@ def allowed_file(filename):
 
 documents = []
 
-# List of 10 Unique Professional IDs for Residents
 AVAILABLE_IDS = [
     "UID-992-XQ-2026", "UID-118-BT-7734", "UID-404-NM-8812", 
     "UID-607-TR-1190", "UID-223-KL-5561", "UID-884-PL-0092", 
@@ -26,71 +26,53 @@ AVAILABLE_IDS = [
     "UID-101-ZZ-9943"
 ]
 
-# Standard Users Mapping: 'username': ['Unique ID', 'Role']
 users = {
     'resident_user': ['UID-101-ZZ-9943', 'Resident']
 }
 
-# UPDATED: Offices with Specific Local Government Titles and Hard-to-Guess IDs
 admins = {
     "brgy_admin": {"unique_id": 'BGY-882-OFF-VAL', "office": "Barangay Officials"},
     "city_mayor": {"unique_id": 'MAYOR-441-CITY-SEC', "office": "City Mayor"},
     "provincial_gov": {"unique_id": 'GOV-110-PROV-AUTH', "office": "Provincial Governor"},
 }
 
-# ---------------- SIGNUP / REGISTER ----------------
+# ---------------- REGISTER ----------------
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
-        # We ignore the position from the form and force it to "Resident" for public signup
-        position = "Resident" 
+        position = "Resident"
 
         if username in users:
             return "Username already taken! <a href='/register'>Try again</a>"
 
         assigned_id = random.choice(AVAILABLE_IDS)
         users[username] = [assigned_id, position]
-        
-        # Auto-login after registration
+
         session['user'] = username
         session['role'] = position
 
-        return f"""
-        <div style="font-family: sans-serif; text-align: center; margin-top: 100px;">
-            <div style="display: inline-block; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #ddd; max-width: 400px;">
-                <h2 style="color: #0300bd;">Registration Successful!</h2>
-                <p>Hello, <strong>{username}</strong>. You are registered as a <strong>Resident</strong>.</p>
-                <p>Your Professional Unique ID is:</p>
-                <h1 style="background: #f0f2f5; padding: 10px; border: 2px dashed #0300bd;">{assigned_id}</h1>
-                <p style="color: red; font-size: 13px;"><strong>Save this ID immediately!</strong> You need it to log in next time.</p>
-                <br>
-                <a href="/userdashboard" style="background: #0300bd; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Go to My Dashboard</a>
-            </div>
-        </div>
-        """
-    return render_template('signup.html')
+        return f"Registered! Your ID: {assigned_id} <a href='/userdashboard'>Go to dashboard</a>"
+
+    return render_template('sign up.html')
 
 # ---------------- LOGIN ----------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
-        provided_id = request.form['password'] 
+        provided_id = request.form['password']
 
-        # 1. Check Standard Residents
         if username in users and users[username][0] == provided_id:
             session['user'] = username
             session['role'] = users[username][1]
             return redirect('/userdashboard')
 
-        # 2. Check Specific Government Offices
         if username in admins and admins[username]["unique_id"] == provided_id:
             session["user"] = username
             session["role"] = "office"
             session["office"] = admins[username]["office"]
-            
-            # Map offices to their respective dashboards
+
             if session["office"] == "Barangay Officials":
                 return redirect('/office1')
             elif session["office"] == "City Mayor":
@@ -109,22 +91,184 @@ def userdashboard():
         return redirect('/login')
     return render_template('userdashboard.html')
 
-@app.route('/office1') # Barangay Officials
+@app.route('/office1')
 def office1():
-    if session.get("office") != "Barangay Officials": return redirect('/login')
+    if session.get("office") != "Barangay Officials":
+        return redirect('/login')
     return render_template('admindashboard.html')
 
-@app.route('/office2') # City Mayor
+# ---------------- 🏛️ OFFICE 2 (CITY MAYOR) ----------------
+@app.route('/office2')
 def office2():
-    if session.get("office") != "City Mayor": return redirect('/login')
+    if session.get("office") != "City Mayor":
+        return redirect('/login')
     return render_template('2admindashboard.html')
 
-@app.route('/office3') # Provincial Governor
+
+@app.route('/office2/documents')
+def office2_documents():
+    if session.get("office") != "City Mayor":
+        return jsonify({"error": "Unauthorized"})
+
+    # Only Barangay-approved documents
+    filtered = [doc for doc in documents if doc.get("status") == "APPROVED BY BARANGAY"]
+    return jsonify(filtered)
+
+
+@app.route('/mayor/approve/<filename>', methods=['POST'])
+def mayor_approve(filename):
+    if session.get("office") != "City Mayor":
+        return jsonify({"error": "Unauthorized"})
+
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "APPROVED BY MAYOR"
+            return jsonify({"success": True})
+
+    return jsonify({"error": "Document not found"})
+
+
+@app.route('/mayor/decline/<filename>', methods=['POST'])
+def mayor_decline(filename):
+    if session.get("office") != "City Mayor":
+        return jsonify({"error": "Unauthorized"})
+
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "DECLINED BY MAYOR"
+            return jsonify({"success": True})
+
+    return jsonify({"error": "Document not found"})
+
+
+# ---------------- OFFICE 3 ----------------
+@app.route('/office3')
 def office3():
-    if session.get("office") != "Provincial Governor": return redirect('/login')
+    if session.get("office") != "Provincial Governor":
+        return redirect('/login')
     return render_template('3admindashboard.html')
 
-# (Upload and Process logic remain the same, ensuring 'current_office' 1-3 matches the sequence above)
 
+@app.route('/office3/documents')
+def office3_documents():
+    if session.get("office") != "Provincial Governor":
+        return jsonify({"error": "Unauthorized"})
+
+    # Only Mayor-approved documents are visible here
+    filtered = [doc for doc in documents if doc.get("status") == "APPROVED BY MAYOR"]
+    return jsonify(filtered)
+
+
+@app.route('/governor/approve/<filename>', methods=['POST'])
+def governor_approve(filename):
+    if session.get("office") != "Provincial Governor":
+        return jsonify({"error": "Unauthorized"})
+
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "APPROVED BY GOVERNOR (FINAL)"
+            return jsonify({"success": True})
+
+    return jsonify({"error": "Document not found"})
+
+
+@app.route('/governor/decline/<filename>', methods=['POST'])
+def governor_decline(filename):
+    if session.get("office") != "Provincial Governor":
+        return jsonify({"error": "Unauthorized"})
+
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "DECLINED BY GOVERNOR"
+            return jsonify({"success": True})
+
+    return jsonify({"error": "Document not found"})
+
+# ---------------- FILE UPLOAD ----------------
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"})
+
+    file = request.files['file']
+    title = request.form.get('title')
+    desc = request.form.get('desc')
+    office = request.form.get('office')
+
+    if file.filename == '':
+        return jsonify({"error": "No selected file"})
+
+    if not title or not desc or not office:
+        return jsonify({"error": "Missing form data"})
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        counter = 1
+        while os.path.exists(filepath):
+            name, ext = filename.rsplit('.', 1)
+            filename = f"{name}_{counter}.{ext}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            counter += 1
+
+        file.save(filepath)
+
+        doc = {
+            "title": title,
+            "desc": desc,
+            "office": office,
+            "filename": filename,
+            "status": "Pending ⏳"
+        }
+
+        documents.append(doc)
+
+        return jsonify(doc)
+
+    return jsonify({"error": "Invalid file type"})
+
+# ---------------- GET DOCUMENTS ----------------
+@app.route('/documents')
+def get_documents():
+    return jsonify(documents)
+
+# ---------------- OFFICE 1 ----------------
+@app.route('/office1/documents')
+def office1_documents():
+    if session.get("office") != "Barangay Officials":
+        return jsonify({"error": "Unauthorized"})
+    return jsonify(documents)
+
+@app.route('/approve/<filename>', methods=['POST'])
+def approve_document(filename):
+    if session.get("office") != "Barangay Officials":
+        return jsonify({"error": "Unauthorized"})
+
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "APPROVED BY BARANGAY"
+            return jsonify({"success": True})
+
+    return jsonify({"error": "Document not found"})
+
+@app.route('/decline/<filename>', methods=['POST'])
+def decline_document(filename):
+    if session.get("office") != "Barangay Officials":
+        return jsonify({"error": "Unauthorized"})
+
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "DECLINED BY BARANGAY"
+            return jsonify({"success": True})
+
+    return jsonify({"error": "Document not found"})
+
+# ---------------- FILE VIEW ----------------
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# ---------------- RUN ----------------
 if __name__ == '__main__':
     app.run(debug=True)
