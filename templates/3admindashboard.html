@@ -1,157 +1,144 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Office 3 Dashboard</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: #f0f4f8;
-            margin: 0;
-            padding: 20px;
-        }
+<style>
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  background: #f5f6f7;
+}
 
-        .container {
-            max-width: 900px;
-            margin: auto;
-        }
+/* SIDEBAR */
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  background: linear-gradient(180deg, #0f172a, #020617);
+  color: white;
+  padding: 20px;
+}
 
-        .card {
-            background: white;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
+.sidebar h2 {
+  margin-bottom: 20px;
+}
 
-        .title {
-            font-size: 18px;
-            font-weight: bold;
-        }
+.sidebar p {
+  font-size: 13px;
+  color: #94a3b8;
+}
 
-        .status {
-            font-weight: bold;
-            color: #1b5e20;
-        }
+/* MAIN */
+.main {
+  flex: 1;
+  padding: 30px;
+}
 
-        button {
-            padding: 8px 12px;
-            margin-right: 6px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
+.header {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
 
-        .approve {
-            background: #28a745;
-            color: white;
-        }
+.card {
+  background: white;
+  padding: 18px;
+  margin-bottom: 15px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  border-left: 6px solid #6366f1;
+}
 
-        .decline {
-            background: #dc3545;
-            color: white;
-        }
+/* BUTTONS */
+.btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 5px;
+}
 
-        .download {
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            padding: 8px 12px;
-            border-radius: 5px;
-        }
+.open { background: #2563eb; color: white; }
+.approve { background: #16a34a; color: white; }
+.decline { background: #dc2626; color: white; }
 
-        h2 {
-            margin-bottom: 5px;
-        }
-    </style>
+.status {
+  font-weight: bold;
+}
+</style>
 </head>
+
 <body>
 
-<div class="container">
+<div class="sidebar">
+  <h2>Provincial Office</h2>
+  <p>Final Approval Authority System</p>
+  <a href="/logout" style="color:white;">Logout</a>
+</div>
 
-    <h2>🏢 Office 3 Dashboard</h2>
-    <p>Final Approval Stage (Last Office)</p>
+<div class="main">
 
-    <div id="docs"></div>
+  <div class="header">
+    <h1>Governor Dashboard</h1>
+    <p>Final review of Mayor-approved documents</p>
+  </div>
+
+  <div id="docList"></div>
 
 </div>
 
 <script>
 
 function loadDocs() {
-    fetch('/documents')
-        .then(res => res.json())
-        .then(data => {
-            let box = document.getElementById("docs");
-            box.innerHTML = "";
+  fetch('/office3/documents')
+    .then(res => res.json())
+    .then(data => {
+      const list = document.getElementById('docList');
+      list.innerHTML = '';
 
-            if (data.length === 0) {
-                box.innerHTML = "<p>No documents for final review.</p>";
-                return;
-            }
+      data.forEach(doc => {
+        const div = document.createElement('div');
+        div.className = "card";
 
-            data.forEach(doc => {
-                box.innerHTML += `
-                    <div class="card">
-                        <div class="title">${doc.title}</div>
-                        <p>${doc.desc}</p>
+        let color = "#f59e0b";
+        if (doc.status.includes("APPROVED")) color = "#16a34a";
+        if (doc.status.includes("DECLINED")) color = "#dc2626";
 
-                        <p>Status: <span class="status">${doc.status}</span></p>
+        div.innerHTML = `
+          <h3>${doc.title}</h3>
+          <p>${doc.desc}</p>
+          <p><b>Office:</b> ${doc.office}</p>
 
-                        <a class="download" href="/download/${doc.filename}">Download</a>
+          <p class="status" style="color:${color}">
+            ${doc.status}
+          </p>
 
-                        <br><br>
+          <button class="btn open" onclick="openFile('${doc.filename}')">Open</button>
+          <button class="btn approve" onclick="approve('${doc.filename}')">Approve</button>
+          <button class="btn decline" onclick="decline('${doc.filename}')">Decline</button>
+        `;
 
-                        <button class="approve" onclick="finalApprove('${doc.filename}')">
-                            Final Approve
-                        </button>
-
-                        <button class="decline" onclick="declineDoc('${doc.filename}')">
-                            Decline
-                        </button>
-                    </div>
-                `;
-            });
-        });
+        list.appendChild(div);
+      });
+    });
 }
 
-// FINAL APPROVE (stays in Office 3 but marked DONE)
-function finalApprove(filename) {
-    fetch('/process', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            filename: filename,
-            action: 'approve'
-        })
-    })
+function openFile(filename) {
+  window.open(`/uploads/${filename}`, '_blank');
+}
+
+function approve(filename) {
+  fetch(`/governor/approve/${filename}`, { method: 'POST' })
     .then(() => loadDocs());
 }
 
-// DECLINE
-function declineDoc(filename) {
-    let remarks = prompt("Enter remarks:");
-
-    fetch('/process', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            filename: filename,
-            action: 'decline',
-            remarks: remarks
-        })
-    })
+function decline(filename) {
+  fetch(`/governor/decline/${filename}`, { method: 'POST' })
     .then(() => loadDocs());
 }
 
-// AUTO LOAD
-loadDocs();
-
-// AUTO REFRESH (optional)
-setInterval(loadDocs, 5000);
+window.onload = loadDocs;
 
 </script>
 
