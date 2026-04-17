@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
+<title>Office Dashboard</title>
+
 <style>
 body {
   margin: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", sans-serif;
   display: flex;
-  background: #f1f5f9;
+  background: #eef2f7;
 }
 
+/* SIDEBAR */
 .sidebar {
-  width: 240px;
+  width: 250px;
   height: 100vh;
-  background: linear-gradient(180deg, #1e293b, #0f172a);
+  background: #1e293b;
   color: white;
   padding: 20px;
 }
@@ -23,10 +27,12 @@ body {
 }
 
 .sidebar a {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 12px;
   margin-bottom: 10px;
-  color: #cbd5f5;
+  color: #cbd5e1;
   text-decoration: none;
   border-radius: 8px;
 }
@@ -36,23 +42,75 @@ body {
   color: white;
 }
 
+/* MAIN */
 .main {
   flex: 1;
   padding: 30px;
 }
 
-#docForm {
-  display: none;
-  margin-top: 15px;
+/* HEADER */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-button {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+/* BUTTON */
+.btn {
   background: #2563eb;
   color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* FORM */
+.form-card {
+  background: white;
+  padding: 20px;
+  margin-top: 20px;
+  border-radius: 12px;
+  display: none;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+input, textarea, select {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+/* DOCUMENT CARDS */
+.card {
+  background: white;
+  padding: 15px;
+  margin-top: 15px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+}
+
+.card-left {
+  max-width: 70%;
+}
+
+.status {
+  font-weight: bold;
+}
+
+.pending { color: #f59e0b; }
+.approved { color: #22c55e; }
+.declined { color: #ef4444; }
+
+.actions a {
+  text-decoration: none;
+  font-size: 18px;
+  margin-left: 10px;
 }
 </style>
 </head>
@@ -61,38 +119,55 @@ button {
 
 <div class="sidebar">
   <h2>Office Panel</h2>
-  <a href="#">Dashboard</a>
-  <a href="/logout">Logout</a>
+  <a href="#" onclick="showAll()">🏠 Dashboard</a>
+  <a href="#" onclick="filterDocs('pending')">📄 Pending</a>
+  <a href="/logout">🚪 Logout</a>
 </div>
 
 <div class="main">
 
-  <h1>Office Document System</h1>
+  <div class="header">
+    <h1>Document Dashboard</h1>
+    <button class="btn" onclick="toggleForm()">+ Upload</button>
+  </div>
 
-  <button onclick="toggleForm()">+ Upload Document</button>
+  <div style="margin-top:20px;">
+  <input 
+    type="text" 
+    id="searchInput" 
+    placeholder="🔍 Search by Tracking ID..." 
+    onkeyup="searchDocs()"
+    style="width: 300px; padding:10px; border-radius:8px; border:1px solid #ccc;"
+  >
+</div>
 
-  <div id="docForm">
-    <input type="text" id="docTitle" placeholder="Title"><br><br>
-    <textarea id="docDesc" placeholder="Description"></textarea><br><br>
+  <!-- FORM -->
+  <div class="form-card" id="docForm">
+    <input type="text" id="docTitle" placeholder="Title">
+    <textarea id="docDesc" placeholder="Description"></textarea>
 
     <select id="docOffice">
       <option value="">Select Office</option>
       <option value="Office 1">Office 1</option>
       <option value="Office 2">Office 2</option>
       <option value="Office 3">Office 3</option>
-    </select><br><br>
+    </select>
 
-    <input type="file" id="docFile" accept=".doc,.docx,.xls,.xlsx"><br><br>
+    <input type="file" id="docFile" accept=".doc,.docx,.xls,.xlsx">
 
-    <button onclick="saveDocument()">Upload</button>
+    <button class="btn" onclick="saveDocument()">Upload</button>
   </div>
 
+  <!-- DOCUMENT LIST -->
   <div id="documentsList"></div>
 
 </div>
 
 <script>
 
+let allDocs = [];
+
+// TOGGLE FORM
 function toggleForm() {
   const form = document.getElementById('docForm');
   form.style.display = form.style.display === 'block' ? 'none' : 'block';
@@ -137,8 +212,10 @@ function saveDocument() {
       return;
     }
 
-    addToList(data);
+    allDocs.push(data);
+    renderDocs(allDocs);
 
+    // reset form
     document.getElementById('docTitle').value = '';
     document.getElementById('docDesc').value = '';
     document.getElementById('docOffice').value = '';
@@ -151,43 +228,65 @@ function saveDocument() {
   });
 }
 
-// ================= DISPLAY =================
-function addToList(doc) {
+// ================= RENDER =================
+function renderDocs(docs) {
   const list = document.getElementById('documentsList');
-  const div = document.createElement('div');
+  list.innerHTML = '';
 
-  let color = "#f59e0b";
-  let status = doc.status || "Pending ⏳";
+  docs.forEach(doc => {
 
-  if (doc.status && doc.status.includes("APPROVED")) {
-    color = "#22c55e";
-    status = "Approved ✅";
+    let statusClass = "pending";
+    let statusText = "Pending ⏳";
+
+    if (doc.status && doc.status.includes("APPROVED")) {
+      statusClass = "approved";
+      statusText = "Approved ✅";
+    }
+
+    if (doc.status && doc.status.includes("DECLINED")) {
+      statusClass = "declined";
+      statusText = "Declined ❌";
+    }
+
+    const div = document.createElement('div');
+    div.className = "card";
+
+    div.innerHTML = `
+      <div class="card-left">
+        <strong>${doc.title}</strong><br>
+        <small><b>ID:</b> ${doc.tracking_id || "N/A"}</small>
+        <p>${doc.desc}</p>
+        <small><b>Office:</b> ${doc.office || "N/A"}</small><br>
+        <span class="status ${statusClass}">${statusText}</span>
+      </div>
+
+      <div class="actions">
+        <a href="/uploads/${doc.filename}" target="_blank" title="Open File">📂</a>
+        <a href="#" onclick="viewHistory('${doc.filename}')" title="View History">🕒</a>
+      </div>
+    `;
+
+    list.appendChild(div);
+  });
+}
+
+// ================= FILTER =================
+function filterDocs(type) {
+  if (type === 'pending') {
+    const filtered = allDocs.filter(doc => !doc.status || doc.status.includes("PENDING"));
+    renderDocs(filtered);
   }
+}
 
-  if (doc.status && doc.status.includes("DECLINED")) {
-    color = "#ef4444";
-    status = "Declined ❌";
-  }
+// SHOW ALL
+function showAll() {
+  renderDocs(allDocs);
+}
 
-  div.style.background = "white";
-  div.style.padding = "15px";
-  div.style.marginBottom = "10px";
-  div.style.borderLeft = `6px solid ${color}`;
-  div.style.borderRadius = "10px";
-
-  div.innerHTML = `
-    <strong>${doc.title}</strong>
-    <p>${doc.desc}</p>
-    <p><b>Office:</b> ${doc.office || "N/A"}</p>
-
-    <p style="color:${color}; font-weight:bold;">
-      ${status}
-    </p>
-
-    <a href="/uploads/${doc.filename}" target="_blank">Open File</a>
-  `;
-
-  list.appendChild(div);
+// ================= HISTORY =================
+function viewHistory(filename) {
+  // placeholder (you can connect backend later)
+  alert("Viewing history for: " + filename);
 }
 
 // ================= LOAD =================
@@ -195,11 +294,63 @@ window.onload = function() {
   fetch('/documents')
     .then(res => res.json())
     .then(data => {
-      data.forEach(doc => addToList(doc));
+      allDocs = data;
+      renderDocs(allDocs);
     })
     .catch(err => console.error(err));
 }
+  function searchDocs() {
+  const input = document.getElementById('searchInput').value.toLowerCase().trim();
+  const list = document.getElementById('documentsList');
 
+  // if empty → show all
+  if (input === "") {
+    renderDocs(allDocs);
+    return;
+  }
+
+  const filtered = allDocs.filter(doc => 
+    doc.tracking_id && doc.tracking_id.toLowerCase().includes(input)
+  );
+
+  // ❌ NOT FOUND MESSAGE
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div style="
+        background:white;
+        padding:20px;
+        margin-top:20px;
+        border-radius:10px;
+        text-align:center;
+        color:#ef4444;
+        font-weight:bold;
+      ">
+        ❌ Tracking ID not found
+      </div>
+    `;
+    return;
+  }
+
+  // ✅ show results
+  renderDocs(filtered);
+}
+
+window.onload = function() {
+  fetch('/documents')
+    .then(res => res.json())
+    .then(data => {
+
+      // add fallback IDs if missing
+      data.forEach(doc => {
+        if (!doc.tracking_id) {
+          doc.tracking_id = "TRK-" + Math.floor(Math.random()*99999);
+        }
+      });
+
+      allDocs = data;
+      renderDocs(allDocs);
+    });
+};
 </script>
 
 </body>
