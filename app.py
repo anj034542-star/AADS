@@ -214,12 +214,18 @@ def upload_file():
 
         file.save(filepath)
 
+        import random
+
+        tracking_id = f"TRK-{random.randint(10000,99999)}"
+
         doc = {
+            "tracking_id": tracking_id,   # ⭐ NEW
             "title": title,
             "desc": desc,
             "office": office,
+            "target_office": office,
             "filename": filename,
-            "status": "Pending ⏳"
+            "status": "PENDING"
         }
 
         documents.append(doc)
