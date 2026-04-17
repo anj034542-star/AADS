@@ -219,7 +219,7 @@ def upload_file():
         tracking_id = f"TRK-{random.randint(10000,99999)}"
 
         doc = {
-            "tracking_id": tracking_id,   # ⭐ NEW
+            "tracking_id": tracking_id,   
             "title": title,
             "desc": desc,
             "office": office,
