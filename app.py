@@ -117,7 +117,7 @@ def reporting_dashboard():
     if "user" not in session:
         return redirect('/login')
     # Change this to match your actual filename
-    return render_template('4admindashbaord.html') 
+    return render_template('DocumentReports.html') 
 
 @app.route('/api/all_reports')
 def get_all_reports():
