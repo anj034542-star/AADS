@@ -193,8 +193,25 @@ def create_app():
 
     return app
 
+    # ... (all your existing code for office1, office2, office3, etc.)
 
-# ---------------- RUN ----------------
-if __name__ == "__main__":
+    # ---------------- NEW REPORTING DASHBOARD ----------------
+    @app.route('/reports')
+    def reporting_dashboard():
+        # Only allow logged-in users to access
+        if "user" not in session:
+            return redirect('/login')
+        return render_template('4dashboard.html')
+
+    @app.route('/api/all_reports')
+    def get_all_reports():
+        if "user" not in session:
+            return jsonify({"error": "Unauthorized"})
+        # This sends the documents list to the DataTable in 4dashboard.html
+        return jsonify(doc_manager.get_all())
+
+    return app
+
+if __name__ == '__main__':
     app = create_app()
     app.run(debug=True)
