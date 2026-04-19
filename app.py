@@ -54,7 +54,7 @@ def register():
 
         return f"Registered! Your ID: {assigned_id} <a href='/userdashboard'>Go to dashboard</a>"
 
-    return render_template('sign up.html')
+    return render_template('signup.html')
 
 # ---------------- LOGIN ----------------
 @app.route('/login', methods=['GET', 'POST'])
