@@ -109,21 +109,21 @@ def office3():
     if session.get("office") != "Provincial Governor":
         return redirect('/login')
     return render_template('3admindashboard.html')
-
 # ---------------- NEW REPORTS DASHBOARD ----------------
 
 @app.route('/reports')
 def reporting_dashboard():
     if "user" not in session:
         return redirect('/login')
-    return render_template('4dashboard.html')
+    # Change this to match your actual filename
+    return render_template('4admindashboard.html') 
 
 @app.route('/api/all_reports')
 def get_all_reports():
     if "user" not in session:
         return jsonify({"error": "Unauthorized"})
+    # This sends the global 'documents' list to your DataTables script
     return jsonify(documents)
-
 # ---------------- DOCUMENT ACTIONS ----------------
 
 @app.route('/upload', methods=['POST'])
@@ -213,18 +213,6 @@ def approve_gov(filename):
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-# ... (all your existing code for office1, office2, office3, etc.)
-
-# ---------------- NEW REPORTING DASHBOARD ----------------
- @app.route('/reports')
-def reporting_dashboard():
-    # Only allow logged-in users to access
-    if "user" not in session:
-        return redirect('/login')
-    return render_template('4admindashboard.html')
-
-
 # ---------------- RUN ----------------
 if __name__ == '__main__':
     app.run(debug=True)
