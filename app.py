@@ -1,5 +1,6 @@
 import random
 import os
+from datetime import datetime
 from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 
@@ -116,12 +117,12 @@ def reporting_dashboard():
     if "user" not in session:
         return redirect('/login')
     # Change this to match your actual filename
-    return render_template('4admindashboard.html') 
+    return render_template('4admindashbaord.html') 
 
 @app.route('/api/all_reports')
 def get_all_reports():
     if "user" not in session:
-        return jsonify({"error": "Unauthorized"})
+        return jsonify([])  # not an error object
     # This sends the global 'documents' list to your DataTables script
     return jsonify(documents)
 # ---------------- DOCUMENT ACTIONS ----------------
@@ -158,7 +159,8 @@ def upload_file():
             "office": office,
             "target_office": office,
             "filename": filename,
-            "status": "PENDING"
+            "status": "PENDING",
+            "created_at": datetime.now().strftime("%Y-%m-%d")
         }
         documents.append(doc)
         return jsonify(doc)
