@@ -217,19 +217,13 @@ def uploaded_file(filename):
 # ... (all your existing code for office1, office2, office3, etc.)
 
 # ---------------- NEW REPORTING DASHBOARD ----------------
-@app.route('/reports')
+ @app.route('/reports')
 def reporting_dashboard():
     # Only allow logged-in users to access
     if "user" not in session:
         return redirect('/login')
-    return render_template('4dashboard.html')
+    return render_template('4admindashboard.html')
 
-@app.route('/api/all_reports')
-def get_all_reports():
-    if "user" not in session:
-        return jsonify({"error": "Unauthorized"})
-    # This sends the documents list to the DataTable in 4dashboard.html
-    return jsonify(documents)
 
 # ---------------- RUN ----------------
 if __name__ == '__main__':
