@@ -64,20 +64,6 @@ class UserManager:
     def validate_user(self, username, uid):
         return username in self.users and self.users[username][0] == uid
 
-# ---------------- REPORTING DASHBOARD ----------------
-@app.route('/reports')
-def reporting_dashboard():
-    # Basic protection - adjust as needed (e.g., only admins can see reports)
-    if "user" not in session:
-        return redirect('/login')
-    return render_template('4dashboard.html')
-
-@app.route('/api/all_reports')
-def get_all_reports():
-    if "user" not in session:
-        return jsonify({"error": "Unauthorized"})
-    # Returns all documents for reporting purposes
-    return jsonify(documents)
 # ---------------- ADMIN MANAGER ----------------
 class AdminManager:
     def __init__(self):
