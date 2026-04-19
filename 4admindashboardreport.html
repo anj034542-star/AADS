@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container">
+        <span class="navbar-brand">System Reports</span>
+        <a href="/userdashboard" class="btn btn-outline-light btn-sm">Back to Home</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Generate Document Report</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <label class="form-label">Report Type</label>
+                    <select id="reportType" class="form-select">
+                        <option value="all">All Documents</option>
+                        <option value="APPROVED">Approved Only</option>
+                        <option value="DECLINED">Declined Only</option>
+                        <option value="PENDING">Pending Only</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Office Filter</label>
+                    <select id="officeFilter" class="form-select">
+                        <option value="">All Offices</option>
+                        <option value="City Mayor">City Mayor</option>
+                        <option value="Provincial Governor">Provincial Governor</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Search Any Field</label>
+                    <input type="text" id="customSearch" class="form-control" placeholder="Search tracking ID, Title...">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button onclick="refreshData()" class="btn btn-primary w-100">Refresh Data</button>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="table-responsive">
+                <table id="reportsTable" class="table table-striped table-hover w-100">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Tracking ID</th>
+                            <th>Title</th>
+                            <th>Target Office</th>
+                            <th>Status</th>
+                            <th>Filename</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportData">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    var table = $('#reportsTable').DataTable({
+        dom: 'Bfrtip', // Defines the position of the buttons
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                className: 'btn btn-success btn-sm',
+                title: 'Document_Report_' + new Date().toLocaleDateString()
+            },
+            {
+                extend: 'pdfHtml5',
+                className: 'btn btn-danger btn-sm',
+                title: 'Document Report'
+            },
+            {
+                extend: 'print',
+                className: 'btn btn-secondary btn-sm'
+            }
+        ],
+        ajax: {
+            url: '/api/all_reports',
+            dataSrc: ''
+        },
+        columns: [
+            { data: 'tracking_id' },
+            { data: 'title' },
+            { data: 'office' },
+            { 
+                data: 'status',
+                render: function(data) {
+                    let color = data.includes('APPROVED') ? 'success' : (data.includes('DECLINED') ? 'danger' : 'warning');
+                    return `<span class="badge bg-${color}">${data}</span>`;
+                }
+            },
+            { data: 'filename' }
+        ]
+    });
+
+    // Custom Filters
+    $('#reportType').on('change', function() {
+        let val = $(this).val();
+        if(val === 'all') {
+            table.column(3).search('').draw();
+        } else {
+            table.column(3).search(val).draw();
+        }
+    });
+
+    $('#officeFilter').on('change', function() {
+        table.column(2).search($(this).val()).draw();
+    });
+
+    $('#customSearch').on('keyup', function() {
+        table.search(this.value).draw();
+    });
+});
+
+function refreshData() {
+    $('#reportsTable').DataTable().ajax.reload();
+}
+</script>
+
+</body>
+</html>
