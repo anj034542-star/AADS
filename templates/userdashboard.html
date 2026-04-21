@@ -399,7 +399,7 @@
     .action-btn {
       background: transparent;
       border: none;
-      font-size: 1.2rem;
+      font-size: 1rem;
       cursor: pointer;
       padding: 8px 12px;
       border-radius: 40px;
@@ -423,6 +423,15 @@
     .action-btn.approve-demo {
       background: #e6f7e6;
       color: #166534;
+    }
+
+    .action-btn.delete {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .action-btn.delete:hover {
+      background: #fecaca;
+      transform: scale(0.97);
     }
 
     .empty-state {
@@ -504,62 +513,17 @@
 </div>
 
 <script>
-  // ---------- MOCK DATA & STORAGE ----------
+  // ---------- LOCALSTORAGE MANAGEMENT (NO PAST DOCUMENTS BY DEFAULT) ----------
   let residentDocs = [];
 
-  // Helper: load from localStorage
+  // Load from localStorage, if empty -> empty array (no sample docs)
   function loadFromStorage() {
     const stored = localStorage.getItem('resident_dashboard_docs');
     if (stored) {
       residentDocs = JSON.parse(stored);
     } else {
-      // sample rich data for design showcase
-      residentDocs = [
-        {
-          id: "doc_1",
-          tracking_id: "BRG-24A7F1",
-          title: "Barangay Clearance Request",
-          desc: "Request for new business clearance",
-          status: "APPROVED BY BARANGAY",
-          target_office: "Barangay Hall",
-          decline_reason: null,
-          declined_by: null,
-          filename: "clearance_request.docx",
-          date_upload: new Date().toISOString()
-        },
-        {
-          id: "doc_2",
-          tracking_id: "MAY-9B2E44",
-          title: "Construction Permit",
-          desc: "Residential renovation permit application",
-          status: "APPROVED BY MAYOR",
-          target_office: "Mayor's Office",
-          decline_reason: null,
-          filename: "construction_permit.xlsx",
-          date_upload: new Date().toISOString()
-        },
-        {
-          id: "doc_3",
-          tracking_id: "GOV-7C8F22",
-          title: "Financial Assistance",
-          desc: "Medical financial aid request",
-          status: "DECLINED",
-          target_office: "Governor's Office",
-          decline_reason: "Incomplete medical certificate and income docs",
-          declined_by: "Mayor's Office",
-          filename: "assistance_form.doc",
-        },
-        {
-          id: "doc_4",
-          tracking_id: "PND-3D9E11",
-          title: "Cedula Application",
-          desc: "Community tax certificate renewal",
-          status: "PENDING",
-          target_office: "Barangay Hall",
-          decline_reason: null,
-          filename: "cedula_request.docx",
-        }
-      ];
+      // START TOTALLY EMPTY – no preloaded documents
+      residentDocs = [];
       localStorage.setItem('resident_dashboard_docs', JSON.stringify(residentDocs));
     }
   }
@@ -568,14 +532,14 @@
     localStorage.setItem('resident_dashboard_docs', JSON.stringify(residentDocs));
   }
 
-  // generate random tracking
+  // Helper: generate random tracking ID (short, readable)
   function generateTracking() {
     const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    return `${letters[Math.floor(Math.random()*letters.length)]}${letters[Math.floor(Math.random()*letters.length)]}-${rand}`;
+    const randNum = Math.floor(1000 + Math.random() * 9000);
+    return `${letters[Math.floor(Math.random()*letters.length)]}${letters[Math.floor(Math.random()*letters.length)]}-${randNum}`;
   }
 
-  // stats update
+  // Update statistics cards based on current residentDocs
   function updateStats() {
     const total = residentDocs.length;
     const pending = residentDocs.filter(d => d.status === "PENDING").length;
@@ -589,13 +553,14 @@
     `;
   }
 
-  // render logic with filters and search
   let activeFilter = "all";
+
+  // Render documents with filters, search, and DELETE button
   function renderDocuments() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
     let filtered = [...residentDocs];
     
-    // filter by status
+    // status filter
     if (activeFilter !== "all") {
       if (activeFilter === "pending") filtered = filtered.filter(d => d.status === "PENDING");
       else if (activeFilter === "approved_barangay") filtered = filtered.filter(d => d.status === "APPROVED BY BARANGAY");
@@ -610,7 +575,7 @@
     
     const container = document.getElementById('documentsList');
     if (filtered.length === 0) {
-      container.innerHTML = `<div class="empty-state"><i class="fas fa-search" style="font-size: 40px; opacity: 0.6;"></i><h3>No documents found</h3><p>Try different filter or upload a new document.</p></div>`;
+      container.innerHTML = `<div class="empty-state"><i class="fas fa-trash-alt" style="font-size: 40px; opacity: 0.5;"></i><h3>No documents found</h3><p>Click "Upload New" to add your first document.</p></div>`;
       updateStats();
       return;
     }
@@ -624,23 +589,23 @@
       else if (doc.status === "DECLINED") statusClass = "declined";
       else statusClass = "pending";
       
+      // forward button logic
       let forwardButton = "";
       let demoApproveButton = "";
       
-      // Forward logic simulation based on status
       if (doc.status === "APPROVED BY BARANGAY") {
         forwardButton = `<button class="action-btn forward" onclick="forwardDocument('${doc.id}', 'mayor')"><i class="fas fa-share"></i> Forward to Mayor</button>`;
       } else if (doc.status === "APPROVED BY MAYOR") {
         forwardButton = `<button class="action-btn forward" onclick="forwardDocument('${doc.id}', 'governor')"><i class="fas fa-share"></i> Forward to Governor</button>`;
       }
       
-      // DEMO approve button: for PENDING documents only -> to allow forward demo (shows resident how flow works)
+      // Demo approve for pending documents (user can simulate approval)
       if (doc.status === "PENDING") {
-        demoApproveButton = `<button class="action-btn approve-demo" onclick="mockApproveByBarangay('${doc.id}')"><i class="fas fa-thumbs-up"></i> Mock Approve (Barangay)</button>`;
+        demoApproveButton = `<button class="action-btn approve-demo" onclick="mockApproveByBarangay('${doc.id}')"><i class="fas fa-thumbs-up"></i> Mock Approve (Brgy)</button>`;
       }
       
       const declineHtml = (doc.status === "DECLINED" && doc.decline_reason) ? 
-        `<div class="decline-message"><i class="fas fa-info-circle"></i> <strong>${doc.declined_by || 'Office'} declined:</strong> ${doc.decline_reason}</div>` : '';
+        `<div class="decline-message"><i class="fas fa-info-circle"></i> <strong>${doc.declined_by || 'Office'} declined:</strong> ${escapeHtml(doc.decline_reason)}</div>` : '';
       
       return `
         <div class="doc-card">
@@ -660,6 +625,8 @@
             <button class="action-btn outline" onclick="simulateOpenFile('${doc.filename}')"><i class="fas fa-eye"></i> Open</button>
             ${demoApproveButton}
             ${forwardButton}
+            <!-- DELETE ICON / BUTTON -->
+            <button class="action-btn delete" onclick="deleteDocument('${doc.id}')"><i class="fas fa-trash-alt"></i> Delete</button>
           </div>
         </div>
       `;
@@ -667,9 +634,32 @@
     updateStats();
   }
   
-  function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+  function escapeHtml(str) { 
+    if(!str) return '';
+    return str.replace(/[&<>]/g, function(m){
+      if(m==='&') return '&amp;';
+      if(m==='<') return '&lt;';
+      if(m==='>') return '&gt;';
+      return m;
+    }); 
+  }
   
-  // MOCK forward logic
+  // ---------- DELETE DOCUMENT FUNCTIONALITY ----------
+  function deleteDocument(docId) {
+    if (confirm("⚠️ Are you sure you want to delete this document? This action cannot be undone.")) {
+      const newDocs = residentDocs.filter(doc => doc.id !== docId);
+      if (newDocs.length === residentDocs.length) {
+        showToast("Document not found", "error");
+        return;
+      }
+      residentDocs = newDocs;
+      saveToLocalStorage();
+      renderDocuments();
+      showToast("Document permanently deleted", "success");
+    }
+  }
+  
+  // ---------- FORWARD LOGIC (mock workflow) ----------
   function forwardDocument(docId, target) {
     const docIndex = residentDocs.findIndex(d => d.id === docId);
     if (docIndex === -1) return;
@@ -705,7 +695,7 @@
     }
   }
   
-  // Save new document from form
+  // Save new document from upload form
   function saveNewDocument() {
     const title = document.getElementById('docTitle').value.trim();
     const desc = document.getElementById('docDesc').value.trim();
@@ -726,7 +716,7 @@
       return;
     }
     
-    const newId = 'doc_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+    const newId = 'doc_' + Date.now() + '_' + Math.floor(Math.random()*10000);
     const newDoc = {
       id: newId,
       tracking_id: generateTracking(),
@@ -747,7 +737,7 @@
     fileInput.value = '';
     document.getElementById('uploadFormContainer').style.display = 'none';
     renderDocuments();
-    showToast(`Document "${title}" uploaded! Tracking ID: ${newDoc.tracking_id}`, "success");
+    showToast(`✅ "${title}" uploaded! Tracking ID: ${newDoc.tracking_id}`, "success");
   }
   
   function toggleUploadForm() {
@@ -759,7 +749,7 @@
     showToast(`📄 Preview: ${filename} (demo mode - document would open here)`, "info");
   }
   
-  // Toast notif
+  // Toast notification
   function showToast(message, type = "info") {
     let toastDiv = document.getElementById('dynamic-toast');
     if (!toastDiv) {
@@ -783,14 +773,14 @@
     else toastDiv.style.backgroundColor = '#1e293b';
     toastDiv.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i> ${message}`;
     toastDiv.style.opacity = '1';
+    toastDiv.style.display = 'block';
     setTimeout(() => {
       toastDiv.style.opacity = '0';
-      setTimeout(() => { if(toastDiv) toastDiv.style.display = 'none'; }, 500);
+      setTimeout(() => { if(toastDiv) toastDiv.style.display = 'none'; }, 400);
     }, 2800);
-    toastDiv.style.display = 'block';
   }
   
-  // filter events
+  // Filter handlers
   function filterStatusGlobal(filter) {
     activeFilter = filter;
     document.querySelectorAll('.filter-chip').forEach(chip => {
@@ -800,7 +790,6 @@
     renderDocuments();
   }
   
-  // search event listener
   function attachEvents() {
     document.getElementById('searchInput').addEventListener('keyup', () => renderDocuments());
     document.querySelectorAll('.filter-chip').forEach(chip => {
@@ -810,20 +799,21 @@
     });
   }
   
-  // init
+  // Initialize: load from storage (empty by default), attach events, render
   function init() {
-    loadFromStorage();
+    loadFromStorage();   // ensures empty array if no data
     attachEvents();
     renderDocuments();
   }
   
-  // global sidebar quick filter
+  // Expose functions globally for onclick
   window.filterStatusGlobal = filterStatusGlobal;
   window.toggleUploadForm = toggleUploadForm;
   window.saveNewDocument = saveNewDocument;
   window.forwardDocument = forwardDocument;
   window.mockApproveByBarangay = mockApproveByBarangay;
   window.simulateOpenFile = simulateOpenFile;
+  window.deleteDocument = deleteDocument;
   window.showToast = showToast;
   
   init();
