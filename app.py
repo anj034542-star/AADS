@@ -1,56 +1,49 @@
-import random
 import os
 from datetime import datetime
 from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify, make_response
 from werkzeug.utils import secure_filename
+from config import Config
+from models import db, User, Admin, Document, AVAILABLE_IDS, generate_tracking_id
+from utils import allowed_file
+import random
 
 app = Flask(__name__)
-app.secret_key = "secret123"
+app.config.from_object(Config)
 
-UPLOAD_FOLDER = 'uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Initialize extensions
+db.init_app(app)
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# Create upload folder if not exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-ALLOWED_EXTENSIONS = {'doc', 'docx', 'xls', 'xlsx'}
+# Create tables and seed admin accounts (run once)
+with app.app_context():
+    db.create_all()
+    # Seed default admins if not already present
+    default_admins = {
+        "brgy_admin": {"unique_id": "BGY-882-OFF-VAL", "office": "Barangay Officials"},
+        "city_mayor": {"unique_id": "MAYOR-441-CITY-SEC", "office": "City Mayor"},
+        "provincial_gov": {"unique_id": "GOV-110-PROV-AUTH", "office": "Provincial Governor"},
+    }
+    for username, data in default_admins.items():
+        if not Admin.query.filter_by(username=username).first():
+            admin = Admin(username=username, unique_id=data["unique_id"], office=data["office"])
+            db.session.add(admin)
+    db.session.commit()
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Global list to store documents in memory
-documents = []
-
-AVAILABLE_IDS = [
-    "UID-992-XQ-2026", "UID-118-BT-7734", "UID-404-NM-8812", 
-    "UID-607-TR-1190", "UID-223-KL-5561", "UID-884-PL-0092", 
-    "UID-331-VB-4478", "UID-559-QA-3321", "UID-770-MK-6610", 
-    "UID-101-ZZ-9943"
-]
-
-users = {
-    'resident_user': ['UID-101-ZZ-9943', 'Resident']
-}
-
-admins = {
-    "brgy_admin": {"unique_id": 'BGY-882-OFF-VAL', "office": "Barangay Officials"},
-    "city_mayor": {"unique_id": 'MAYOR-441-CITY-SEC', "office": "City Mayor"},
-    "provincial_gov": {"unique_id": 'GOV-110-PROV-AUTH', "office": "Provincial Governor"},
-}
-
-# ---------------- AUTH ROUTES ----------------
-
+# ------------------- AUTH ROUTES -------------------
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
-        position = "Resident"
-        if username in users:
+        if User.query.filter_by(username=username).first():
             return "Username already taken! <a href='/register'>Try again</a>"
         assigned_id = random.choice(AVAILABLE_IDS)
-        users[username] = [assigned_id, position]
+        user = User(username=username, unique_id=assigned_id, role='Resident')
+        db.session.add(user)
+        db.session.commit()
         session['user'] = username
-        session['role'] = position
+        session['role'] = 'Resident'
         return f"Registered! Your ID: {assigned_id} <a href='/userdashboard'>Go to dashboard</a>"
     return render_template('signup.html')
 
@@ -60,21 +53,24 @@ def login():
         username = request.form['username']
         provided_id = request.form['password']
 
-        if username in users and users[username][0] == provided_id:
-            session['user'] = username
-            session['role'] = users[username][1]
+        # Check resident
+        user = User.query.filter_by(username=username, unique_id=provided_id).first()
+        if user:
+            session['user'] = user.username
+            session['role'] = user.role
             return redirect('/userdashboard')
 
-        if username in admins and admins[username]["unique_id"] == provided_id:
-            session["user"] = username
-            session["role"] = "office"
-            session["office"] = admins[username]["office"]
-
-            if session["office"] == "Barangay Officials":
+        # Check admin
+        admin = Admin.query.filter_by(username=username, unique_id=provided_id).first()
+        if admin:
+            session['user'] = admin.username
+            session['role'] = 'office'
+            session['office'] = admin.office
+            if admin.office == "Barangay Officials":
                 return redirect('/office1')
-            elif session["office"] == "City Mayor":
+            elif admin.office == "City Mayor":
                 return redirect('/office2')
-            elif session["office"] == "Provincial Governor":
+            elif admin.office == "Provincial Governor":
                 return redirect('/office3')
 
         return render_template('login.html', message='Invalid ID or Username')
@@ -89,8 +85,7 @@ def logout():
     resp.headers['Expires'] = '0'
     return resp
 
-# ---------------- DASHBOARDS ----------------
-
+# ------------------- DASHBOARDS -------------------
 @app.route('/userdashboard')
 def userdashboard():
     if "user" not in session:
@@ -115,22 +110,21 @@ def office3():
         return redirect('/login')
     return render_template('3admindashboard.html')
 
-# ---------------- REPORTS DASHBOARD ----------------
-
+# ------------------- REPORTS DASHBOARD -------------------
 @app.route('/reports')
 def reporting_dashboard():
     if "user" not in session:
         return redirect('/login')
-    return render_template('DocumentReports.html') 
+    return render_template('DocumentReports.html')
 
 @app.route('/api/all_reports')
 def get_all_reports():
     if "user" not in session:
         return jsonify([])
-    return jsonify(documents)
+    docs = Document.query.all()
+    return jsonify([doc.to_dict() for doc in docs])
 
-# ---------------- DOCUMENT ACTIONS ----------------
-
+# ------------------- DOCUMENT ACTIONS -------------------
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -140,14 +134,12 @@ def upload_file():
     desc = request.form.get('desc')
     office = request.form.get('office')
 
-    # Force office to Office 1 for residents (optional but safe)
     if session.get('role') == 'Resident':
         office = "Office 1"
 
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        
         counter = 1
         base_filename = filename
         while os.path.exists(filepath):
@@ -155,124 +147,139 @@ def upload_file():
             filename = f"{name}_{counter}.{ext}"
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             counter += 1
-
         file.save(filepath)
-        tracking_id = f"TRK-{random.randint(10000,99999)}"
-        
-        doc = {
-            "tracking_id": tracking_id,   
-            "title": title,
-            "desc": desc,
-            "office": office,
-            "target_office": office,   # current office that should process it
-            "filename": filename,
-            "status": "PENDING",
-            "created_at": datetime.now().strftime("%Y-%m-%d")
-        }
-        documents.append(doc)
-        return jsonify(doc)
+
+        tracking_id = generate_tracking_id()
+        doc = Document(
+            tracking_id=tracking_id,
+            title=title,
+            description=desc,
+            office=office,
+            target_office=office,
+            filename=filename,
+            status='PENDING',
+            uploaded_by=session.get('user')
+        )
+        db.session.add(doc)
+        db.session.commit()
+        return jsonify(doc.to_dict())
     return jsonify({"error": "Invalid file type"})
 
-# ---- Office document lists (filtered by target_office and status) ----
+# ---- Office document lists ----
 @app.route('/office1/documents')
 def office1_documents():
     if session.get("office") != "Barangay Officials":
         return jsonify([])
-    # Barangay sees documents that target Office 1 and are not yet approved by them
-    filtered = [doc for doc in documents if doc.get("target_office") == "Office 1" and doc.get("status") not in ["APPROVED BY BARANGAY", "DECLINED BY BARANGAY"]]
-    return jsonify(filtered)
+    docs = Document.query.filter(
+        Document.target_office == "Office 1",
+        ~Document.status.in_(["APPROVED BY BARANGAY", "DECLINED BY BARANGAY"])
+    ).all()
+    return jsonify([doc.to_dict() for doc in docs])
 
 @app.route('/office2/documents')
 def office2_documents():
     if session.get("office") != "City Mayor":
         return jsonify([])
-    filtered = [doc for doc in documents if doc.get("target_office") == "Office 2" and doc.get("status") not in ["APPROVED BY MAYOR", "DECLINED BY MAYOR"]]
-    return jsonify(filtered)
+    docs = Document.query.filter(
+        Document.target_office == "Office 2",
+        ~Document.status.in_(["APPROVED BY MAYOR", "DECLINED BY MAYOR"])
+    ).all()
+    return jsonify([doc.to_dict() for doc in docs])
 
 @app.route('/office3/documents')
 def office3_documents():
     if session.get("office") != "Provincial Governor":
         return jsonify([])
-    filtered = [doc for doc in documents if doc.get("target_office") == "Office 3" and doc.get("status") not in ["APPROVED BY GOVERNOR (FINAL)", "DECLINED BY GOVERNOR"]]
-    return jsonify(filtered)
+    docs = Document.query.filter(
+        Document.target_office == "Office 3",
+        ~Document.status.in_(["APPROVED BY GOVERNOR (FINAL)", "DECLINED BY GOVERNOR"])
+    ).all()
+    return jsonify([doc.to_dict() for doc in docs])
 
 # ---- Approval routes ----
 @app.route('/approve/<filename>', methods=['POST'])
 def approve_brgy(filename):
-    for doc in documents:
-        if doc["filename"] == filename:
-            doc["status"] = "APPROVED BY BARANGAY"
-            # Keep target_office as Office 1 until user forwards
-            return jsonify({"success": True})
+    doc = Document.query.filter_by(filename=filename).first()
+    if doc:
+        doc.status = "APPROVED BY BARANGAY"
+        db.session.commit()
+        return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
 @app.route('/mayor/approve/<filename>', methods=['POST'])
 def approve_mayor(filename):
-    for doc in documents:
-        if doc["filename"] == filename:
-            doc["status"] = "APPROVED BY MAYOR"
-            return jsonify({"success": True})
+    doc = Document.query.filter_by(filename=filename).first()
+    if doc:
+        doc.status = "APPROVED BY MAYOR"
+        db.session.commit()
+        return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
 @app.route('/governor/approve/<filename>', methods=['POST'])
 def approve_gov(filename):
-    for doc in documents:
-        if doc["filename"] == filename:
-            doc["status"] = "APPROVED BY GOVERNOR (FINAL)"
-            return jsonify({"success": True})
+    doc = Document.query.filter_by(filename=filename).first()
+    if doc:
+        doc.status = "APPROVED BY GOVERNOR (FINAL)"
+        db.session.commit()
+        return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
-# ---- Decline routes with reason and office name ----
+# ---- Decline routes ----
 @app.route('/decline/<filename>', methods=['POST'])
 def decline_brgy(filename):
     reason = request.json.get('reason', 'No reason provided')
-    for doc in documents:
-        if doc["filename"] == filename:
-            doc["status"] = "DECLINED BY BARANGAY"
-            doc["decline_reason"] = reason
-            doc["declined_by"] = "Barangay Officials"
-            return jsonify({"success": True})
+    doc = Document.query.filter_by(filename=filename).first()
+    if doc:
+        doc.status = "DECLINED BY BARANGAY"
+        doc.decline_reason = reason
+        doc.declined_by = "Barangay Officials"
+        db.session.commit()
+        return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
 @app.route('/mayor/decline/<filename>', methods=['POST'])
 def decline_mayor(filename):
     reason = request.json.get('reason', 'No reason provided')
-    for doc in documents:
-        if doc["filename"] == filename:
-            doc["status"] = "DECLINED BY MAYOR"
-            doc["decline_reason"] = reason
-            doc["declined_by"] = "City Mayor"
-            return jsonify({"success": True})
+    doc = Document.query.filter_by(filename=filename).first()
+    if doc:
+        doc.status = "DECLINED BY MAYOR"
+        doc.decline_reason = reason
+        doc.declined_by = "City Mayor"
+        db.session.commit()
+        return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
 @app.route('/governor/decline/<filename>', methods=['POST'])
 def decline_gov(filename):
     reason = request.json.get('reason', 'No reason provided')
-    for doc in documents:
-        if doc["filename"] == filename:
-            doc["status"] = "DECLINED BY GOVERNOR"
-            doc["decline_reason"] = reason
-            doc["declined_by"] = "Provincial Governor"
-            return jsonify({"success": True})
+    doc = Document.query.filter_by(filename=filename).first()
+    if doc:
+        doc.status = "DECLINED BY GOVERNOR"
+        doc.decline_reason = reason
+        doc.declined_by = "Provincial Governor"
+        db.session.commit()
+        return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
-# ---- Forwarding routes (user-triggered) ----
+# ---- Forwarding routes ----
 @app.route('/forward_to_mayor/<tracking_id>', methods=['POST'])
 def forward_to_mayor(tracking_id):
-    for doc in documents:
-        if doc["tracking_id"] == tracking_id and doc["status"] == "APPROVED BY BARANGAY":
-            doc["target_office"] = "Office 2"
-            doc["status"] = "PENDING (MAYOR)"
-            return jsonify({"success": True})
+    doc = Document.query.filter_by(tracking_id=tracking_id, status="APPROVED BY BARANGAY").first()
+    if doc:
+        doc.target_office = "Office 2"
+        doc.status = "PENDING (MAYOR)"
+        db.session.commit()
+        return jsonify({"success": True})
     return jsonify({"error": "Not eligible for forwarding"})
 
 @app.route('/forward_to_governor/<tracking_id>', methods=['POST'])
 def forward_to_governor(tracking_id):
-    for doc in documents:
-        if doc["tracking_id"] == tracking_id and doc["status"] == "APPROVED BY MAYOR":
-            doc["target_office"] = "Office 3"
-            doc["status"] = "PENDING (GOVERNOR)"
-            return jsonify({"success": True})
+    doc = Document.query.filter_by(tracking_id=tracking_id, status="APPROVED BY MAYOR").first()
+    if doc:
+        doc.target_office = "Office 3"
+        doc.status = "PENDING (GOVERNOR)"
+        db.session.commit()
+        return jsonify({"success": True})
     return jsonify({"error": "Not eligible for forwarding"})
 
 # ---- File serving ----
