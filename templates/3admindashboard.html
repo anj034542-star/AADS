@@ -377,8 +377,9 @@
         <a href="#" id="navIncoming"><i class="fas fa-inbox"></i> <span>Pending Review</span></a>
     </div>
     <div class="sidebar-footer">
-        <a href="#" onclick="alert('🔐 Logout simulation — session ended'); return false;"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
-    </div>
+        <a href="#" onclick="if(confirm('Logout?')) window.location.href='/logout'; return false;">
+  <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+</a>
 </div>
 
 <div class="main">
