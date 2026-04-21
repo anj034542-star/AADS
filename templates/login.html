@@ -91,6 +91,17 @@
             font-size: 14px;
         }
 
+        .success-msg {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+            border: 1px solid #c3e6cb;
+        }
+
         .footer-links {
             text-align: center;
             margin-top: 20px;
@@ -114,6 +125,10 @@
         </div>
         {% endif %}
 
+        <div id="logoutSuccessMsg" style="display: none;" class="success-msg">
+            ✅ You have been logged out successfully.
+        </div>
+
         <form action="/login" method="POST">
             <div class="form-group">
                 <label>Username</label>
@@ -133,6 +148,21 @@
             <p>Don't have an account? <a href="/register">Register here</a></p>
         </div>
     </div>
+
+    <script>
+        // Check if URL contains ?logout=success
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('logout') === 'success') {
+            const msgDiv = document.getElementById('logoutSuccessMsg');
+            msgDiv.style.display = 'block';
+            // Remove the parameter from URL after 4 seconds without reloading
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }, 4000);
+        }
+    </script>
 
 </body>
 </html>
