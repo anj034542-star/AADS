@@ -1,28 +1,204 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Office Dashboard</title>
-<link rel="stylesheet" href="styles.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  background: #f5f7fb;
+  color: #1e293b;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  color: #fff;
+  padding: 25px 20px;
+}
+
+.sidebar h2 {
+  margin-bottom: 40px;
+  font-weight: 600;
+}
+
+.sidebar a {
+  display: block;
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  color: #cbd5e1;
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* MAIN */
+.main {
+  flex: 1;
+  padding: 30px;
+}
+
+/* HEADER */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: 26px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* BUTTON */
+.btn-primary {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.3s;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* TOPBAR */
+.topbar {
+  margin: 25px 0;
+}
+
+.topbar input {
+  width: 320px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  outline: none;
+  transition: 0.3s;
+}
+
+.topbar input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* GRID */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* CARD */
+.card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  transition: 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
+.card strong {
+  font-size: 16px;
+}
+
+.card p {
+  font-size: 14px;
+  margin: 10px 0;
+  color: #475569;
+}
+
+/* STATUS */
+.status {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pending { color: #f59e0b; }
+.approved { color: #22c55e; }
+.declined { color: #ef4444; }
+
+/* ACTIONS */
+.actions {
+  margin-top: 10px;
+}
+
+.actions a {
+  margin-right: 10px;
+  text-decoration: none;
+  font-size: 18px;
+}
+
+/* EMPTY STATE */
+.empty {
+  background: white;
+  padding: 30px;
+  text-align: center;
+  border-radius: 12px;
+  color: #64748b;
+}
+</style>
 </head>
 
 <body>
 
+<!-- SIDEBAR -->
 <div class="sidebar">
-  <h2>Office Panel</h2>
-  <a href="#" onclick="showAll()">🏠 Dashboard</a>
+  <h2>📁 Office Panel</h2>
+
+  <a href="#" onclick="showAll()" class="active">🏠 Dashboard</a>
   <a href="#" onclick="filterDocs('pending')">📄 Pending</a>
   <a href="/logout">🚪 Logout</a>
 </div>
 
+<!-- MAIN -->
 <div class="main">
 
+  <!-- HEADER -->
   <div class="header">
-    <h1>Document Dashboard</h1>
-    <button class="btn" onclick="openUploadPage()">+ Upload</button>
+    <div>
+      <h1>Dashboard</h1>
+      <p class="subtitle">Manage and track your documents</p>
+    </div>
+
+    <button class="btn-primary" onclick="openUploadPage()">
+      + Upload Document
+    </button>
   </div>
 
-  <div style="margin-top:20px;">
+  <!-- SEARCH -->
+  <div class="topbar">
     <input 
       type="text" 
       id="searchInput" 
@@ -32,13 +208,112 @@
   </div>
 
   <!-- DOCUMENT LIST -->
-  <div id="documentsList"></div>
+  <div id="documentsList" class="grid"></div>
 
 </div>
 
-<script src="dashboard.js"></script>
-
 <script>
+let allDocs = [];
+
+/* LOAD DATA */
+window.onload = function() {
+  fetch('/documents')
+    .then(res => res.json())
+    .then(data => {
+      data.forEach(doc => {
+        if (!doc.tracking_id) {
+          doc.tracking_id = "TRK-" + Math.floor(Math.random()*99999);
+        }
+      });
+
+      allDocs = data;
+      renderDocs(allDocs);
+    })
+    .catch(err => console.error(err));
+};
+
+/* RENDER */
+function renderDocs(docs) {
+  const list = document.getElementById('documentsList');
+  list.innerHTML = '';
+
+  if (docs.length === 0) {
+    list.innerHTML = `<div class="empty">No documents found</div>`;
+    return;
+  }
+
+  docs.forEach(doc => {
+
+    let statusClass = "pending";
+    let statusText = "Pending ⏳";
+
+    if (doc.status && doc.status.includes("APPROVED")) {
+      statusClass = "approved";
+      statusText = "Approved ✅";
+    }
+
+    if (doc.status && doc.status.includes("DECLINED")) {
+      statusClass = "declined";
+      statusText = "Declined ❌";
+    }
+
+    const div = document.createElement('div');
+    div.className = "card";
+
+    div.innerHTML = `
+      <strong>${doc.title}</strong>
+      <p>${doc.desc}</p>
+
+      <small><b>ID:</b> ${doc.tracking_id}</small><br>
+      <small><b>Office:</b> ${doc.office || "N/A"}</small><br><br>
+
+      <span class="status ${statusClass}">${statusText}</span>
+
+      <div class="actions">
+        <a href="/uploads/${doc.filename}" target="_blank" title="Open">📂</a>
+        <a href="#" onclick="viewHistory('${doc.filename}')" title="History">🕒</a>
+      </div>
+    `;
+
+    list.appendChild(div);
+  });
+}
+
+/* FILTER */
+function filterDocs(type) {
+  if (type === 'pending') {
+    const filtered = allDocs.filter(doc => !doc.status || doc.status.includes("PENDING"));
+    renderDocs(filtered);
+  }
+}
+
+/* SHOW ALL */
+function showAll() {
+  renderDocs(allDocs);
+}
+
+/* SEARCH */
+function searchDocs() {
+  const input = document.getElementById('searchInput').value.toLowerCase().trim();
+
+  if (input === "") {
+    renderDocs(allDocs);
+    return;
+  }
+
+  const filtered = allDocs.filter(doc => 
+    doc.tracking_id && doc.tracking_id.toLowerCase().includes(input)
+  );
+
+  renderDocs(filtered);
+}
+
+/* HISTORY */
+function viewHistory(filename) {
+  alert("Viewing history for: " + filename);
+}
+
+/* NAVIGATION */
 function openUploadPage() {
   window.location.href = "upload.html";
 }
@@ -46,3 +321,4 @@ function openUploadPage() {
 
 </body>
 </html>
+```
