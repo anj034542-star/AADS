@@ -1,7 +1,7 @@
 import random
 import os
 from datetime import datetime
-from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify
+from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify, make_response
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -83,7 +83,11 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect('/login')
+    resp = make_response(redirect('/login?logout=success'))
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
 
 # ---------------- DASHBOARDS ----------------
 
@@ -110,21 +114,21 @@ def office3():
     if session.get("office") != "Provincial Governor":
         return redirect('/login')
     return render_template('3admindashboard.html')
-# ---------------- NEW REPORTS DASHBOARD ----------------
+
+# ---------------- REPORTS DASHBOARD ----------------
 
 @app.route('/reports')
 def reporting_dashboard():
     if "user" not in session:
         return redirect('/login')
-    # Change this to match your actual filename
     return render_template('DocumentReports.html') 
 
 @app.route('/api/all_reports')
 def get_all_reports():
     if "user" not in session:
-        return jsonify([])  # not an error object
-    # This sends the global 'documents' list to your DataTables script
+        return jsonify([])
     return jsonify(documents)
+
 # ---------------- DOCUMENT ACTIONS ----------------
 
 @app.route('/upload', methods=['POST'])
@@ -136,11 +140,14 @@ def upload_file():
     desc = request.form.get('desc')
     office = request.form.get('office')
 
+    # Force office to Office 1 for residents (optional but safe)
+    if session.get('role') == 'Resident':
+        office = "Office 1"
+
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
-        # Avoid overwriting files with same name
         counter = 1
         base_filename = filename
         while os.path.exists(filepath):
@@ -157,7 +164,7 @@ def upload_file():
             "title": title,
             "desc": desc,
             "office": office,
-            "target_office": office,
+            "target_office": office,   # current office that should process it
             "filename": filename,
             "status": "PENDING",
             "created_at": datetime.now().strftime("%Y-%m-%d")
@@ -166,32 +173,36 @@ def upload_file():
         return jsonify(doc)
     return jsonify({"error": "Invalid file type"})
 
+# ---- Office document lists (filtered by target_office and status) ----
 @app.route('/office1/documents')
 def office1_documents():
     if session.get("office") != "Barangay Officials":
         return jsonify([])
-    return jsonify(documents)
+    # Barangay sees documents that target Office 1 and are not yet approved by them
+    filtered = [doc for doc in documents if doc.get("target_office") == "Office 1" and doc.get("status") not in ["APPROVED BY BARANGAY", "DECLINED BY BARANGAY"]]
+    return jsonify(filtered)
 
 @app.route('/office2/documents')
 def office2_documents():
     if session.get("office") != "City Mayor":
         return jsonify([])
-    filtered = [doc for doc in documents if doc.get("status") == "APPROVED BY BARANGAY"]
+    filtered = [doc for doc in documents if doc.get("target_office") == "Office 2" and doc.get("status") not in ["APPROVED BY MAYOR", "DECLINED BY MAYOR"]]
     return jsonify(filtered)
 
 @app.route('/office3/documents')
 def office3_documents():
     if session.get("office") != "Provincial Governor":
         return jsonify([])
-    filtered = [doc for doc in documents if doc.get("status") == "APPROVED BY MAYOR"]
+    filtered = [doc for doc in documents if doc.get("target_office") == "Office 3" and doc.get("status") not in ["APPROVED BY GOVERNOR (FINAL)", "DECLINED BY GOVERNOR"]]
     return jsonify(filtered)
 
-# Approval Logic
+# ---- Approval routes ----
 @app.route('/approve/<filename>', methods=['POST'])
 def approve_brgy(filename):
     for doc in documents:
         if doc["filename"] == filename:
             doc["status"] = "APPROVED BY BARANGAY"
+            # Keep target_office as Office 1 until user forwards
             return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
@@ -211,10 +222,63 @@ def approve_gov(filename):
             return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
-# File View
+# ---- Decline routes with reason and office name ----
+@app.route('/decline/<filename>', methods=['POST'])
+def decline_brgy(filename):
+    reason = request.json.get('reason', 'No reason provided')
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "DECLINED BY BARANGAY"
+            doc["decline_reason"] = reason
+            doc["declined_by"] = "Barangay Officials"
+            return jsonify({"success": True})
+    return jsonify({"error": "Not found"})
+
+@app.route('/mayor/decline/<filename>', methods=['POST'])
+def decline_mayor(filename):
+    reason = request.json.get('reason', 'No reason provided')
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "DECLINED BY MAYOR"
+            doc["decline_reason"] = reason
+            doc["declined_by"] = "City Mayor"
+            return jsonify({"success": True})
+    return jsonify({"error": "Not found"})
+
+@app.route('/governor/decline/<filename>', methods=['POST'])
+def decline_gov(filename):
+    reason = request.json.get('reason', 'No reason provided')
+    for doc in documents:
+        if doc["filename"] == filename:
+            doc["status"] = "DECLINED BY GOVERNOR"
+            doc["decline_reason"] = reason
+            doc["declined_by"] = "Provincial Governor"
+            return jsonify({"success": True})
+    return jsonify({"error": "Not found"})
+
+# ---- Forwarding routes (user-triggered) ----
+@app.route('/forward_to_mayor/<tracking_id>', methods=['POST'])
+def forward_to_mayor(tracking_id):
+    for doc in documents:
+        if doc["tracking_id"] == tracking_id and doc["status"] == "APPROVED BY BARANGAY":
+            doc["target_office"] = "Office 2"
+            doc["status"] = "PENDING (MAYOR)"
+            return jsonify({"success": True})
+    return jsonify({"error": "Not eligible for forwarding"})
+
+@app.route('/forward_to_governor/<tracking_id>', methods=['POST'])
+def forward_to_governor(tracking_id):
+    for doc in documents:
+        if doc["tracking_id"] == tracking_id and doc["status"] == "APPROVED BY MAYOR":
+            doc["target_office"] = "Office 3"
+            doc["status"] = "PENDING (GOVERNOR)"
+            return jsonify({"success": True})
+    return jsonify({"error": "Not eligible for forwarding"})
+
+# ---- File serving ----
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-# ---------------- RUN ----------------
+
 if __name__ == '__main__':
     app.run(debug=True)
