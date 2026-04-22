@@ -120,6 +120,10 @@
             color: var(--primary-color);
             text-decoration: none;
         }
+
+        #logoutSuccessMsg {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -139,7 +143,7 @@
     {% endwith %}
 
     <!-- Logout success message (hidden by default) -->
-    <div id="logoutSuccessMsg" style="display: none;" class="success-msg">
+    <div id="logoutSuccessMsg" class="success-msg">
         ✅ You have been logged out successfully.
     </div>
 
