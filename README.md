@@ -20,74 +20,207 @@ AADS is a centralized web-based platform designed to automate the manual paperwo
 * **Tiered Approval Pipeline:** A sequential workflow requiring verification from **Barangay**, **City**, and **Provincial** levels.
 * **UID Authentication:** Replaces vulnerable passwords with a **Unique Professional ID** system for both residents and officials.
 * **Multi-Role Dashboards:** Custom interfaces tailored specifically to the needs of Residents and Office Administrators.
-* **File Integrity:** Strict enforcement of allowed file types (`.doc`, `.docx`, `.xls`, `.xlsx`) to prevent system vulnerabilities.
+* **File Integrity:** Strict enforcement of allowed file types (`.doc`, `.docx`, `.excel`, `.xlsx`) to prevent system vulnerabilities.
 * **Transparent Feedback Loop:** If a document is denied, the system captures and displays the specific "Reason for Rejection," allowing for efficient revisions.
 
 ---
 
-### 🛠️ **Prerequisites & Technical Stack**
+## Prerequisites
 
-* **Framework:** Flask (Python-based Web Framework)
-* **Language:** Python 3.8+
-* **Storage:** Localized File System (Uploads folder)
-* **Security:** Session-based Authentication & UID Mapping
+List of tools or software needed before installation.
 
----
+- **Python 3.8+**  
+- **pip** (Python package installer)  
+- **SQLite** (built-in, no extra install) – the app uses `/tmp/app.db` by default  
+- **Git** (optional, for cloning)  
 
-### 📥 **Installation & Deployment**
+Required Python packages (install via `pip`):
 
-1.  **Environment Setup:**
-    Ensure Python is installed, then install the Flask dependency:
-    ```bash
-    pip install flask
-    ```
-2.  **File Configuration:**
-    Ensure your directory structure looks like this:
-    ```text
-    /AADS_Project
-    ├── app.py
-    ├── uploads/
-    └── templates/
-        ├── signup.html
-        ├── login.html
-        └── [dashboards].html
-    ```
-3.  **Initialization:**
-    Run the server via terminal:
-    ```bash
-    python app.py
-    ```
-4.  **Network Access:**
-    Open your browser and navigate to: `http://127.0.0.1:5000`
+```bash
+Flask
+Flask-SQLAlchemy
+Werkzeug
+```
+
+> The code uses only `flask`, `flask_sqlalchemy`, `werkzeug`, plus Python standard libraries (`os`, `random`, `datetime`).
 
 ---
 
-### 🔄 **The AADS Workflow (User Journey)**
+## Installation
 
-#### **Step 1: Registration & ID Allocation**
-Residents register through the portal. The system dynamically assigns a **Unique Professional ID** (e.g., `UID-992-XQ-2026`). **Note:** This ID is required for all future logins.
+Specific commands to get the project running.
 
-#### **Step 2: Document Submission**
-The resident uploads a document via their dashboard. The file is stored securely in the server's `uploads/` directory and enters the "Pending" queue for the first office.
+1. **Clone or create the project folder**  
+   ```bash
+   mkdir document_tracker && cd document_tracker
+   ```
 
-#### **Step 3: Sequential Review**
-The document moves through the **Government Hierarchy**:
-1.  **Barangay Officials:** Verify local residency and basic requirements.
-2.  **City Mayor:** Conducts executive review and alignment.
-3.  **Provincial Governor:** Provides the final statutory approval.
+2. **Save the provided code as `app.py`**  
+   (Copy the entire code into a file named `app.py`)
 
-#### **Step 4: Tracking & Finalization**
-At any stage, the resident can view the **Live Status Monitor**. Once the Provincial Governor approves, the document is marked as "Fully Processed" and ready for official use.
+3. **Create a `templates/` folder** with the required HTML files:  
+   - `signup.html`  
+   - `login.html`  
+   - `userdashboard.html`  
+   - `admindashboard.html`  
+   - `2admindashboard.html`  
+   - `3admindashboard.html`  
+   - `DocumentReports.html`  
+
+   *(Minimal examples are not shown here – you can create simple placeholders.)*
+
+4. **Install dependencies**  
+   ```bash
+   pip install flask flask-sqlalchemy
+   ```
+
+5. **Set environment variables (optional)**  
+   ```bash
+   export SECRET_KEY="your-secret-key"
+   export DATABASE_URL="sqlite:////tmp/app.db"   # or any path
+   export UPLOAD_FOLDER="/tmp/uploads"
+   ```
+
+6. **Run the application**  
+   ```bash
+   flask run
+   # or
+   python app.py
+   ```
+
+   The app will start at `http://127.0.0.1:5000`.
+
+> **Note for Vercel deployment**: The code already uses `/tmp` for database and uploads, and the `app` object is exposed for serverless environments.
 
 ---
 
-### 📊 **Admin Monitoring & Oversight**
-Administrators have elevated privileges to:
-* **Audit** all incoming documents within their specific jurisdiction.
-* **Execute Decisions:** Approve or Reject with mandatory feedback.
-* **System Logs:** Track which office handled which document and at what time.
+## Usage
+
+Examples of how to use the software, often with code blocks.
+
+### 1. User Registration
+**Endpoint:** `POST /register`  
+**Form data:** `username`  
+**Response:** Assigns a random unique ID and logs the user in.
+
+```bash
+curl -X POST http://localhost:5000/register -d "username=juan"
+```
+
+### 2. User Login
+**Endpoint:** `POST /login`  
+**Form data:** `username`, `password` (the unique ID)  
+**Redirects** to `/userdashboard` on success.
+
+```bash
+curl -X POST http://localhost:5000/login -d "username=juan&password=UID-992-XQ-2026"
+```
+
+### 3. Upload a Document (Resident or Admin)
+**Endpoint:** `POST /upload`  
+**Form data (multipart):**  
+- `file` (allowed: .doc, .docx, .excel, .xlsx)  
+- `title`  
+- `desc` (description)  
+- `office` (ignored for Residents – forced to "Office 1")
+
+```bash
+curl -X POST http://localhost:5000/upload \
+  -F "file=@report.docx" \
+  -F "title=Annual Report" \
+  -F "desc=Q1 financials" \
+  -F "office=Office 1" \
+  -b "session_cookie"
+```
+
+**Response (JSON):**
+```json
+{
+  "tracking_id": "TRK-12345",
+  "title": "Annual Report",
+  "status": "PENDING",
+  "filename": "report.docx"
+}
+```
+
+### 4. Barangay Officials – View Pending Documents
+**Endpoint:** `GET /office1/documents`  
+**Requires** session with `office="Barangay Officials"`.
+
+```bash
+curl http://localhost:5000/office1/documents -b "session_cookie"
+```
+
+### 5. Approve a Document (Barangay)
+**Endpoint:** `POST /approve/<filename>`  
+
+```bash
+curl -X POST http://localhost:5000/approve/report.docx -b "session_cookie"
+```
+
+### 6. Decline a Document (with reason)
+**Endpoint:** `POST /decline/<filename>`  
+**JSON body:** `{"reason": "Missing signature"}`
+
+```bash
+curl -X POST http://localhost:5000/decline/report.docx \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Missing signature"}' \
+  -b "session_cookie"
+```
+
+### 7. Forward Approved Document to Mayor
+**Endpoint:** `POST /forward_to_mayor/<tracking_id>`  
+**Condition:** document status must be `APPROVED BY BARANGAY`.
+
+```bash
+curl -X POST http://localhost:5000/forward_to_mayor/TRK-12345 -b "session_cookie"
+```
+
+### 8. Final Approval by Governor
+**Endpoint:** `POST /governor/approve/<filename>`
+
+```bash
+curl -X POST http://localhost:5000/governor/approve/report.docx -b "session_cookie"
+```
+
+### 9. Download Uploaded File
+**Endpoint:** `GET /uploads/<filename>`  
+
+```bash
+curl http://localhost:5000/uploads/report.docx -O
+```
+
+### 10. View All Reports (JSON)
+**Endpoint:** `GET /api/all_reports`  
+
+```bash
+curl http://localhost:5000/api/all_reports -b "session_cookie"
+```
+
+### 11. Logout
+**Endpoint:** `GET /logout`  
+Clears session and redirects to `/login`.
+
+```bash
+curl http://localhost:5000/logout -b "session_cookie"
+```
 
 ---
+
+## Additional Notes from the Code
+
+- **Default admin accounts** are seeded automatically:
+  - `brgy_admin` / `BGY-882-OFF-VAL` → Barangay Officials  
+  - `city_mayor` / `MAYOR-441-CITY-SEC` → City Mayor  
+  - `provincial_gov` / `GOV-110-PROV-AUTH` → Provincial Governor  
+
+- **Document workflow**  
+  Resident upload → Barangay (Office 1) approve/decline → forward to Mayor (Office 2) → approve/decline → forward to Governor (Office 3) → final approve/decline.
+
+- **Tracking ID format:** `TRK-` + 5 random digits.
+
+- **Allowed file extensions:** `.doc`, `.docx`, `.excel`, `.xlsx` (max 16 MB).
 
 ### **Modules**
 
