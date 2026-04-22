@@ -113,11 +113,23 @@ def register():
             return "Username already taken! <a href='/register'>Try again</a>"
         
         # Generate unique ID (same logic as before)
-        assigned_id = random.choice(["UID-992-XQ-2026", "UID-118-BT-7734", "UID-404-NM-8812", 
-                                     "UID-607-TR-1190", "UID-223-KL-5561", "UID-884-PL-0092", 
-                                     "UID-331-VB-4478", "UID-559-QA-3321", "UID-770-MK-6610", 
-                                     "UID-101-ZZ-9943"])
-        
+        assigned_id = random.choice(["UID-992-XQ-2026", "UID-118-BT-7734", "UID-404-NM-8812",
+                                    "UID-607-TR-1190", "UID-223-KL-5561", "UID-884-PL-0092",
+                                    "UID-331-VB-4478", "UID-559-QA-3321", "UID-770-MK-6610",
+                                    "UID-101-ZZ-9943", "UID-778-PK-9031", "UID-501-VN-3158"
+                                    "UID-457-XJ-8213", "UID-182-WP-0492", "UID-839-LK-5740",
+                                    "UID-204-RA-6651", "UID-571-ND-3986", "UID-690-MB-1127",
+                                    "UID-925-CV-9094", "UID-346-QT-2703", "UID-778-BG-4568",
+                                    "UID-013-SF-6245", "UID-462-HU-8819", "UID-508-EY-3307",
+                                    "UID-639-DT-7432", "UID-297-OV-1850", "UID-841-GJ-5623",
+                                    "UID-115-ZM-6974", "UID-674-AP-9081", "UID-430-FX-2746",
+                                    "UID-956-KW-4115", "UID-289-LC-3392", "UID-573-BV-7803",
+                                    "UID-702-NR-2168", "UID-817-JE-0457", "UID-038-HQ-8940",
+                                    "UID-264-SY-5093", "UID-496-UT-6721", "UID-141-WA-9567",
+                                    "UID-685-GP-3084", "UID-329-EC-7835", "UID-954-MZ-4002",
+                                    "UID-470-AH-6378", "UID-613-DJ-1594", "UID-226-RO-2460",])
+                                  
+                                    
         # Create new user with all fields
         user = User(
             username=username,
