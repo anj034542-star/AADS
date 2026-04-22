@@ -102,6 +102,14 @@
             border: 1px solid #c3e6cb;
         }
 
+        .uid-helper {
+            display: block;
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
         .footer-links {
             text-align: center;
             margin-top: 20px;
@@ -116,58 +124,68 @@
 </head>
 <body>
 
-    <div class="login-card">
-        <h2>System Login</h2>
+<div class="login-card">
+    <h2>System Login</h2>
 
+    <!-- Flash messages from backend (success/error) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="{% if category == 'error' %}error-msg{% else %}success-msg{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="{% if category == 'error' %}error-msg{% else %}success-msg{% endif %}">
-                 {{ message }}
-          </div>
-         {% endfor %}
-             {% endif %}
-            {% endwith %}
-
-        <div id="logoutSuccessMsg" style="display: none;" class="success-msg">
-            ✅ You have been logged out successfully.
-        </div>
-
-        <form action="/login" method="POST">
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" name="username" placeholder="Enter your username" required>
-            </div>
-
-            <div class="form-group">
-                <label>Professional Unique ID</label>
-                <input type="password" name="password" placeholder="Enter your Unique ID" required>
-                <small style="color: #888; font-size: 11px;">Your UID acts as your password.</small>
-            </div>
-
-            <button type="submit" class="login-btn">Login</button>
-        </form>
-
-        <div class="footer-links">
-            <p>Don't have an account? <a href="/register">Register here</a></p>
-        </div>
+    <!-- Logout success message (hidden by default) -->
+    <div id="logoutSuccessMsg" style="display: none;" class="success-msg">
+        ✅ You have been logged out successfully.
     </div>
 
-    <script>
-        // Check if URL contains ?logout=success
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('logout') === 'success') {
-            const msgDiv = document.getElementById('logoutSuccessMsg');
+    <form action="/login" method="POST">
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Enter your username" required>
+        </div>
+
+        <div class="form-group">
+            <label>Professional Unique ID</label>
+            <input type="password" name="password" placeholder="Enter your Unique ID" required>
+            <small class="uid-helper">🔐 Your UID acts as your password. Keep it secret.</small>
+        </div>
+
+        <button type="submit" class="login-btn">Login</button>
+    </form>
+
+    <div class="footer-links">
+        <p>Don't have an account? <a href="/register">Register here</a></p>
+    </div>
+</div>
+
+<script>
+    // Handle logout success message from URL parameter ?logout=success
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('logout') === 'success') {
+        // Hide any other flashed messages to avoid duplication
+        document.querySelectorAll('.error-msg, .success-msg').forEach(el => {
+            if (el.id !== 'logoutSuccessMsg') {
+                el.style.display = 'none';
+            }
+        });
+        const msgDiv = document.getElementById('logoutSuccessMsg');
+        if (msgDiv) {
             msgDiv.style.display = 'block';
-            // Remove the parameter from URL after 4 seconds without reloading
+            msgDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Remove the query parameter after 5 seconds and hide message
             setTimeout(() => {
                 msgDiv.style.display = 'none';
                 const cleanUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, cleanUrl);
-            }, 4000);
+            }, 5000);
         }
-    </script>
+    }
+</script>
 
 </body>
 </html>
