@@ -52,7 +52,7 @@
             color: #555;
         }
 
-        input {
+        input, select {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
@@ -65,6 +65,20 @@
         input:focus {
             border-color: var(--primary-color);
             outline: none;
+        }
+
+        input:disabled {
+            background-color: #eee;
+            cursor: not-allowed;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .row .form-group {
+            flex: 1;
         }
 
         .register-btn {
@@ -85,24 +99,8 @@
             opacity: 0.9;
         }
 
-        .message {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
-            display: none;
-        }
-
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        .small-text {
+            color: #666;
         }
     </style>
 </head>
@@ -111,84 +109,48 @@
 <div class="reg-card">
     <h2>Barangay Registration</h2>
     
-    <form id="signupForm">
+    <form action="/register" method="POST">
         <div class="form-group">
             <label>Username</label>
-            <input type="text" name="username" placeholder="Choose a unique username" required autocomplete="off">
+            <input type="text" name="username" placeholder="Choose a unique username" required>
+        </div>
+
+        <div class="form-group">
+            <label>Active Gmail Address</label>
+            <input type="email" name="email" placeholder="example@gmail.com" required>
         </div>
 
         <div class="form-group">
             <label>Professional Unique ID</label>
-            <input type="text" placeholder="System will generate your UID" disabled style="background-color: #eee; cursor: not-allowed;">
-            <small style="color: #666;">You will receive your Unique ID after clicking register.</small>
+            <input type="text" placeholder="System will generate your UID" disabled>
+            <small class="small-text">You will receive your Unique ID after clicking complete.</small>
+        </div>
+
+        <input type="hidden" name="position" value="Resident">
+
+        <div class="row">
+            <div class="form-group">
+                <label>Age</label>
+                <input type="number" name="age" min="1" max="120" placeholder="Enter your age" required>
+            </div>
+            <div class="form-group">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender" required>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Zip Code</label>
+            <input type="text" name="zip" pattern="[0-9]{4}" placeholder="e.g. 1000" required>
         </div>
 
         <button type="submit" class="register-btn">Complete Registration</button>
     </form>
-    <div id="message" class="message"></div>
 </div>
 
-<script>
-    document.getElementById('signupForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const username = this.querySelector('input[name="username"]').value.trim();
-        const messageDiv = document.getElementById('message');
-        const submitBtn = this.querySelector('.register-btn');
-        
-        if (!username) {
-            showMessage('Please enter a username.', 'error');
-            return;
-        }
-        
-        // Disable button to prevent double submission
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Registering...';
-        
-        try {
-            const response = await fetch('/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `username=${encodeURIComponent(username)}`
-            });
-            
-            const text = await response.text();
-            
-            // Check success: the backend returns "Registered! Your ID: ..."
-            if (text.includes('Registered! Your ID:')) {
-                showMessage('Account created successfully! Redirecting to login...', 'success');
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 1500);
-            } else if (text.includes('Username already taken')) {
-                showMessage('Username already taken. Please choose another.', 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Complete Registration';
-            } else {
-                showMessage('Registration failed. Please try again.', 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Complete Registration';
-            }
-        } catch (err) {
-            console.error(err);
-            showMessage('Network error. Please check your connection.', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Complete Registration';
-        }
-    });
-    
-    function showMessage(msg, type) {
-        const msgDiv = document.getElementById('message');
-        msgDiv.textContent = msg;
-        msgDiv.className = `message ${type}`;
-        msgDiv.style.display = 'block';
-        if (type !== 'success') {
-            setTimeout(() => {
-                msgDiv.style.display = 'none';
-            }, 4000);
-        }
-    }
-</script>
 </body>
 </html>
