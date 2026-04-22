@@ -1,5 +1,7 @@
 import os
 import random
+from flask import redirect, url_for
+from flask import flash
 from datetime import datetime
 from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify, make_response
 from werkzeug.utils import secure_filename
@@ -30,6 +32,11 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     unique_id = db.Column(db.String(50), unique=True, nullable=False)
     role = db.Column(db.String(20), default='Resident')
+    # NEW COLUMNS:
+    email = db.Column(db.String(120), nullable=False)      # Gmail address
+    age = db.Column(db.Integer, nullable=False)
+    gender = db.Column(db.String(10), nullable=False)
+    zip_code = db.Column(db.String(10), nullable=False)
 
 class Admin(db.Model):
     __tablename__ = 'admins'
@@ -88,28 +95,47 @@ with app.app_context():
             db.session.add(Admin(username=username, unique_id=data["unique_id"], office=data["office"]))
     db.session.commit()
 
-# ------------------ ALL YOUR ROUTES (unchanged) ------------------
-# (Copy your existing routes from the previous app.py – they remain identical)
-# The only difference is that the Document model uses SQLAlchemy instead of a list.
-# Make sure to replace the old in‑memory `documents` list with database queries.
-# I'll include the complete route set from the refactored version I gave earlier.
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
+        email = request.form.get('email')
+        age = request.form.get('age')
+        gender = request.form.get('gender')
+        zip_code = request.form.get('zip')
+        
+        # Basic validation
+        if not all([username, email, age, gender, zip_code]):
+            return "All fields are required. <a href='/register'>Go back</a>"
+        
+        # Check if username already exists
         if User.query.filter_by(username=username).first():
             return "Username already taken! <a href='/register'>Try again</a>"
+        
+        # Generate unique ID (same logic as before)
         assigned_id = random.choice(["UID-992-XQ-2026", "UID-118-BT-7734", "UID-404-NM-8812", 
                                      "UID-607-TR-1190", "UID-223-KL-5561", "UID-884-PL-0092", 
                                      "UID-331-VB-4478", "UID-559-QA-3321", "UID-770-MK-6610", 
                                      "UID-101-ZZ-9943"])
-        user = User(username=username, unique_id=assigned_id, role='Resident')
+        
+        # Create new user with all fields
+        user = User(
+            username=username,
+            unique_id=assigned_id,
+            role='Resident',
+            email=email,
+            age=int(age),
+            gender=gender,
+            zip_code=zip_code
+        )
+        
         db.session.add(user)
         db.session.commit()
-        session['user'] = username
-        session['role'] = 'Resident'
-        return f"Registered! Your ID: {assigned_id} <a href='/userdashboard'>Go to dashboard</a>"
+        
+        # Flash message and redirect to login
+        flash(f'Registration successful! Your Unique ID is: {assigned_id}. Please log in.', 'success')
+        return redirect(url_for('login'))
+    
     return render_template('signup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
