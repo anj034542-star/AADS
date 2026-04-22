@@ -119,11 +119,16 @@
     <div class="login-card">
         <h2>System Login</h2>
 
-        {% if message %}
-        <div class="error-msg">
-            {{ message }}
-        </div>
-        {% endif %}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="{% if category == 'error' %}error-msg{% else %}success-msg{% endif %}">
+                 {{ message }}
+          </div>
+         {% endfor %}
+             {% endif %}
+            {% endwith %}
 
         <div id="logoutSuccessMsg" style="display: none;" class="success-msg">
             ✅ You have been logged out successfully.
