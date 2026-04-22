@@ -15,7 +15,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', f'sqlite:
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', f'{tmp_dir}/uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-app.config['ALLOWED_EXTENSIONS'] = {'doc', 'docx', 'xls', 'xlsx'}
+app.config['ALLOWED_EXTENSIONS'] = {'doc', 'docx', 'excel', 'xlsx'}
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
