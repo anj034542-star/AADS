@@ -95,6 +95,15 @@ with app.app_context():
             db.session.add(Admin(username=username, unique_id=data["unique_id"], office=data["office"]))
     db.session.commit()
 
+@app.route('/')
+def home():
+    if 'username' in session:
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('user_dashboard'))
+    return redirect(url_for('login'))
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
