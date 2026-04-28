@@ -85,12 +85,14 @@ input, textarea, select {
   border-radius: 12px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+  flex-wrap: wrap;
 }
 
 .card-left {
   max-width: 70%;
+  flex: 1;
 }
 
 .status {
@@ -105,6 +107,14 @@ input, textarea, select {
   text-decoration: none;
   font-size: 18px;
   margin-left: 10px;
+}
+
+.time-info {
+  font-size: 12px;
+  color: #555;
+  margin-top: 8px;
+  border-top: 1px solid #eee;
+  padding-top: 6px;
 }
 </style>
 </head>
@@ -131,10 +141,9 @@ input, textarea, select {
     <input type="text" id="docTitle" placeholder="Title">
     <textarea id="docDesc" placeholder="Description"></textarea>
     <select id="docOffice" style="display:none;">
-  <option value="Office 1" selected>Office 1</option>
-</select>
-<p style="color:gray;">Documents are always first sent to Office 1 (Barangay).</p>
+      <option value="Office 1" selected>Office 1</option>
     </select>
+    <p style="color:gray;">Documents are always first sent to Office 1 (Barangay).</p>
     <input type="file" id="docFile" accept=".doc,.docx,.xls,.xlsx">
     <button class="btn" onclick="saveDocument()">Upload</button>
   </div>
@@ -201,6 +210,15 @@ function saveDocument() {
   });
 }
 
+// Helper to format seconds into "X min Y sec"
+function formatDuration(seconds) {
+  if (!seconds && seconds !== 0) return '—';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  if (mins === 0) return `${secs} sec`;
+  return `${mins} min ${secs} sec`;
+}
+
 function renderDocs(docs) {
   const list = document.getElementById('documentsList');
   list.innerHTML = '';
@@ -208,33 +226,49 @@ function renderDocs(docs) {
   docs.forEach(doc => {
     let statusClass = "pending";
     let statusText = doc.status || "PENDING";
+
+    // Determine status color class
+    if (statusText.includes("APPROVED")) statusClass = "approved";
+    if (statusText.includes("DECLINED")) statusClass = "declined";
+
     let forwardButton = "";
 
-    // Determine if forward button should appear
     if (doc.status === "APPROVED BY BARANGAY") {
       forwardButton = `<button class="btn" style="background:#3b82f6;" onclick="forwardDocument('${doc.tracking_id}', 'mayor')">➡️ Forward to Mayor</button>`;
     } else if (doc.status === "APPROVED BY MAYOR") {
       forwardButton = `<button class="btn" style="background:#3b82f6;" onclick="forwardDocument('${doc.tracking_id}', 'governor')">➡️ Forward to Governor</button>`;
     }
 
-    // Decline message display
     let declineHtml = "";
-    if (doc.status && doc.status.includes("DECLINED")) {
+    if (statusText.includes("DECLINED")) {
       declineHtml = `<div style="background:#fee2e2; padding:8px; margin-top:8px; border-radius:6px;">
         <strong>📢 ${doc.declined_by || "An office"} declined:</strong><br>${doc.decline_reason || "No reason given"}
       </div>`;
     }
 
+    // Time tracking data
+    const startTime = doc.process_start_time ? doc.process_start_time : null;
+    const endTime = doc.process_end_time ? doc.process_end_time : null;
+    const durationSeconds = doc.processing_duration_seconds;
+    
+    let timeHtml = `<div class="time-info">
+      <strong>⏱️ Processing Timeline (Philippine Time):</strong><br>
+      📅 Started: ${startTime || 'Not recorded'}<br>
+      🏁 Finished: ${endTime || 'Still in process'}<br>
+      ⏲️ Duration: ${endTime ? formatDuration(durationSeconds) : '— (pending)'}
+    </div>`;
+
     const div = document.createElement('div');
     div.className = "card";
     div.innerHTML = `
       <div class="card-left">
-        <strong>${doc.title}</strong><br>
+        <strong>${escapeHtml(doc.title)}</strong><br>
         <small><b>ID:</b> ${doc.tracking_id}</small>
-        <p>${doc.desc}</p>
+        <p>${escapeHtml(doc.desc)}</p>
         <small><b>Current office:</b> ${doc.target_office || doc.office}</small><br>
         <span class="status ${statusClass}">${statusText}</span>
         ${declineHtml}
+        ${timeHtml}
       </div>
       <div class="actions">
         <a href="/uploads/${doc.filename}" target="_blank">📂 Open File</a>
@@ -242,6 +276,17 @@ function renderDocs(docs) {
       </div>
     `;
     list.appendChild(div);
+  });
+}
+
+// Simple escape to prevent XSS
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
   });
 }
 
@@ -267,10 +312,6 @@ function showAll() {
   renderDocs(allDocs);
 }
 
-function viewHistory(filename) {
-  alert("History tracking not implemented yet.\nFile: " + filename);
-}
-
 function searchDocs() {
   const input = document.getElementById('searchInput').value.toLowerCase().trim();
   if (input === "") {
@@ -289,15 +330,19 @@ function searchDocs() {
   renderDocs(filtered);
 }
 
-// Load documents from correct API
-window.onload = function() {
+function loadDocs() {
   fetch('/api/all_reports')
     .then(res => res.json())
     .then(data => {
       allDocs = data;
       renderDocs(allDocs);
-    });
+    })
+    .catch(err => console.error(err));
 }
+
+window.onload = function() {
+  loadDocs();
+};
 </script>
 </body>
 </html>
