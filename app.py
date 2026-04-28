@@ -2,12 +2,13 @@ import os
 import random
 from abc import ABC, abstractmethod
 from datetime import datetime
-from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify, make_response, flash
+from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify, make_response, flash, url_for
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 
 # ------------------ CONFIGURATION ------------------
 app = Flask(__name__)
+
 tmp_dir = '/tmp'
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', f'sqlite:///{tmp_dir}/app.db')
@@ -17,24 +18,18 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['ALLOWED_EXTENSIONS'] = {'doc', 'docx', 'excel', 'xlsx'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 db = SQLAlchemy(app)
 
+# ------------------ MODELS WITH ENCAPSULATION ------------------
+class BaseModel(db.Model):
+    __abstract__ = True
 
-# ========================= OOP LAYER =========================
-# 1. ABSTRACT CLASS (Abstraction + Inheritance base)
-class BaseEntity(ABC):
-    """Abstract base class for all domain entities."""
-    @abstractmethod
     def to_dict(self):
-        pass
+        """Common serialization method (polymorphic)."""
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-    @abstractmethod
-    def save(self):
-        pass
-
-
-# 2. ENCAPSULATION: Models with behaviour (getters/setters where needed)
-class User(db.Model, BaseEntity):
+class User(BaseModel):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -45,38 +40,25 @@ class User(db.Model, BaseEntity):
     gender = db.Column(db.String(10), nullable=False)
     zip_code = db.Column(db.String(10), nullable=False)
 
-    def to_dict(self):
-        return {
-            'username': self.username,
-            'unique_id': self.unique_id,
-            'role': self.role,
-            'email': self.email,
-            'age': self.age,
-            'gender': self.gender,
-            'zip_code': self.zip_code
-        }
+    # Encapsulation: private attributes via properties (optional)
+    @property
+    def full_name(self):
+        return self.username
 
-    def save(self):
-        db.session.add(self)
-        db.session.commit()
+    def __repr__(self):
+        return f"<User {self.username}>"
 
-
-class Admin(db.Model, BaseEntity):
+class Admin(BaseModel):
     __tablename__ = 'admins'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     unique_id = db.Column(db.String(50), unique=True, nullable=False)
     office = db.Column(db.String(100), nullable=False)
 
-    def to_dict(self):
-        return {'username': self.username, 'unique_id': self.unique_id, 'office': self.office}
+    def __repr__(self):
+        return f"<Admin {self.username} ({self.office})>"
 
-    def save(self):
-        db.session.add(self)
-        db.session.commit()
-
-
-class Document(db.Model, BaseEntity):
+class Document(BaseModel):
     __tablename__ = 'documents'
     id = db.Column(db.Integer, primary_key=True)
     tracking_id = db.Column(db.String(20), unique=True, nullable=False)
@@ -105,228 +87,175 @@ class Document(db.Model, BaseEntity):
             'created_at': self.created_at.strftime('%Y-%m-%d') if self.created_at else ''
         }
 
-    def save(self):
-        db.session.add(self)
+# ------------------ ABSTRACT BASE CLASS FOR DOCUMENT HANDLERS ------------------
+class DocumentHandler(ABC):
+    """Abstract class for document approval/decline workflows."""
+    
+    @abstractmethod
+    def approve(self, document):
+        pass
+    
+    @abstractmethod
+    def decline(self, document, reason):
+        pass
+    
+    @abstractmethod
+    def get_office_name(self):
+        pass
+
+# ------------------ CONCRETE HANDLERS (INHERITANCE & POLYMORPHISM) ------------------
+class BarangayHandler(DocumentHandler):
+    def approve(self, document):
+        document.status = "APPROVED BY BARANGAY"
         db.session.commit()
+    
+    def decline(self, document, reason):
+        document.status = "DECLINED BY BARANGAY"
+        document.decline_reason = reason
+        document.declined_by = "Barangay Officials"
+        db.session.commit()
+    
+    def get_office_name(self):
+        return "Barangay Officials"
 
-    # Encapsulated state change methods
-    def approve_by_brgy(self):
-        self.status = "APPROVED BY BARANGAY"
-        self.save()
+class MayorHandler(DocumentHandler):
+    def approve(self, document):
+        document.status = "APPROVED BY MAYOR"
+        db.session.commit()
+    
+    def decline(self, document, reason):
+        document.status = "DECLINED BY MAYOR"
+        document.decline_reason = reason
+        document.declined_by = "City Mayor"
+        db.session.commit()
+    
+    def get_office_name(self):
+        return "City Mayor"
 
-    def approve_by_mayor(self):
-        self.status = "APPROVED BY MAYOR"
-        self.save()
+class GovernorHandler(DocumentHandler):
+    def approve(self, document):
+        document.status = "APPROVED BY GOVERNOR (FINAL)"
+        db.session.commit()
+    
+    def decline(self, document, reason):
+        document.status = "DECLINED BY GOVERNOR"
+        document.decline_reason = reason
+        document.declined_by = "Provincial Governor"
+        db.session.commit()
+    
+    def get_office_name(self):
+        return "Provincial Governor"
 
-    def approve_by_governor(self):
-        self.status = "APPROVED BY GOVERNOR (FINAL)"
-        self.save()
-
-    def decline_by_brgy(self, reason):
-        self.status = "DECLINED BY BARANGAY"
-        self.decline_reason = reason
-        self.declined_by = "Barangay Officials"
-        self.save()
-
-    def decline_by_mayor(self, reason):
-        self.status = "DECLINED BY MAYOR"
-        self.decline_reason = reason
-        self.declined_by = "City Mayor"
-        self.save()
-
-    def decline_by_governor(self, reason):
-        self.status = "DECLINED BY GOVERNOR"
-        self.decline_reason = reason
-        self.declined_by = "Provincial Governor"
-        self.save()
-
-    def forward_to_mayor(self):
-        if self.status == "APPROVED BY BARANGAY":
-            self.target_office = "Office 2"
-            self.status = "PENDING (MAYOR)"
-            self.save()
-            return True
-        return False
-
-    def forward_to_governor(self):
-        if self.status == "APPROVED BY MAYOR":
-            self.target_office = "Office 3"
-            self.status = "PENDING (GOVERNOR)"
-            self.save()
-            return True
-        return False
-
-
-# 3. SERVICE CLASSES (Encapsulation of business logic)
-class TrackingIdGenerator:
-    """Encapsulates tracking ID generation."""
+# ------------------ SERVICE CLASSES (ENCAPSULATION) ------------------
+class DocumentService:
+    """Encapsulates document-related operations."""
+    
     @staticmethod
-    def generate():
-        return f"TRK-{random.randint(10000, 99999)}"
-
-
-class FileValidator:
-    """Encapsulates file validation logic."""
+    def generate_tracking_id():
+        return f"TRK-{random.randint(10000,99999)}"
+    
     @staticmethod
-    def allowed_file(filename, allowed_extensions):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
-
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    
     @staticmethod
-    def secure_save(file, upload_folder):
+    def save_upload(file, title, desc, office, username):
         filename = secure_filename(file.filename)
-        filepath = os.path.join(upload_folder, filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         counter = 1
         base = filename
         while os.path.exists(filepath):
             name, ext = base.rsplit('.', 1)
             filename = f"{name}_{counter}.{ext}"
-            filepath = os.path.join(upload_folder, filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             counter += 1
         file.save(filepath)
-        return filename
-
-
-class UniqueIdAssigner:
-    """Encapsulates the assignment of a random unique ID to new users."""
-    _ID_POOL = [
-        "UID-992-XQ-2026", "UID-118-BT-7734", "UID-404-NM-8812",
-        "UID-607-TR-1190", "UID-223-KL-5561", "UID-884-PL-0092",
-        "UID-331-VB-4478", "UID-559-QA-3321", "UID-770-MK-6610",
-        "UID-101-ZZ-9943", "UID-778-PK-9031", "UID-501-VN-3158",
-        "UID-457-XJ-8213", "UID-182-WP-0492", "UID-839-LK-5740",
-        "UID-204-RA-6651", "UID-571-ND-3986", "UID-690-MB-1127",
-        "UID-925-CV-9094", "UID-346-QT-2703", "UID-778-BG-4568",
-        "UID-013-SF-6245", "UID-462-HU-8819", "UID-508-EY-3307",
-        "UID-639-DT-7432", "UID-297-OV-1850", "UID-841-GJ-5623",
-        "UID-115-ZM-6974", "UID-674-AP-9081", "UID-430-FX-2746",
-        "UID-956-KW-4115", "UID-289-LC-3392", "UID-573-BV-7803",
-        "UID-702-NR-2168", "UID-817-JE-0457", "UID-038-HQ-8940",
-        "UID-264-SY-5093", "UID-496-UT-6721", "UID-141-WA-9567",
-        "UID-685-GP-3084", "UID-329-EC-7835", "UID-954-MZ-4002",
-        "UID-470-AH-6378", "UID-613-DJ-1594", "UID-226-RO-2460"
-    ]
-
-    @classmethod
-    def assign(cls):
-        return random.choice(cls._ID_POOL)
-
-
-# 4. ABSTRACT CLASS + INHERITANCE + POLYMORPHISM for office handlers
-class OfficeHandler(ABC):
-    """Abstract handler for different government offices."""
-    def __init__(self, office_name, target_office_code):
-        self._office_name = office_name      # encapsulated
-        self._target_office_code = target_office_code
-
-    @abstractmethod
-    def get_documents_query(self):
-        pass
-
-    @abstractmethod
-    def approve(self, document):
-        pass
-
-    @abstractmethod
-    def decline(self, document, reason):
-        pass
-
-    def get_office_name(self):
-        return self._office_name
-
-
-class BarangayHandler(OfficeHandler):
-    def __init__(self):
-        super().__init__("Barangay Officials", "Office 1")
-
-    def get_documents_query(self):
-        return Document.query.filter(
-            Document.target_office == self._target_office_code,
-            ~Document.status.in_(["APPROVED BY BARANGAY", "DECLINED BY BARANGAY"])
+        tracking_id = DocumentService.generate_tracking_id()
+        doc = Document(
+            tracking_id=tracking_id,
+            title=title,
+            description=desc,
+            office=office,
+            target_office=office,
+            filename=filename,
+            status='PENDING',
+            uploaded_by=username
         )
-
-    def approve(self, document):
-        document.approve_by_brgy()
-
-    def decline(self, document, reason):
-        document.decline_by_brgy(reason)
-
-
-class MayorHandler(OfficeHandler):
-    def __init__(self):
-        super().__init__("City Mayor", "Office 2")
-
-    def get_documents_query(self):
+        db.session.add(doc)
+        db.session.commit()
+        return doc
+    
+    @staticmethod
+    def get_documents_by_office(office_name, exclude_statuses):
+        if office_name == "Barangay Officials":
+            office_col = "Office 1"
+        elif office_name == "City Mayor":
+            office_col = "Office 2"
+        elif office_name == "Provincial Governor":
+            office_col = "Office 3"
+        else:
+            return []
         return Document.query.filter(
-            Document.target_office == self._target_office_code,
-            ~Document.status.in_(["APPROVED BY MAYOR", "DECLINED BY MAYOR"])
-        )
+            Document.target_office == office_col,
+            ~Document.status.in_(exclude_statuses)
+        ).all()
+    
+    @staticmethod
+    def forward_to_next_office(tracking_id, current_status, new_target, new_status):
+        doc = Document.query.filter_by(tracking_id=tracking_id, status=current_status).first()
+        if doc:
+            doc.target_office = new_target
+            doc.status = new_status
+            db.session.commit()
+            return True
+        return False
 
-    def approve(self, document):
-        document.approve_by_mayor()
-
-    def decline(self, document, reason):
-        document.decline_by_mayor(reason)
-
-
-class GovernorHandler(OfficeHandler):
-    def __init__(self):
-        super().__init__("Provincial Governor", "Office 3")
-
-    def get_documents_query(self):
-        return Document.query.filter(
-            Document.target_office == self._target_office_code,
-            ~Document.status.in_(["APPROVED BY GOVERNOR (FINAL)", "DECLINED BY GOVERNOR"])
-        )
-
-    def approve(self, document):
-        document.approve_by_governor()
-
-    def decline(self, document, reason):
-        document.decline_by_governor(reason)
-
-
-# 5. SERVICE CLASS FOR USER AUTHENTICATION & REGISTRATION
-class UserService:
+class AuthService:
+    """Encapsulates authentication and user management."""
+    
     @staticmethod
     def register_user(username, email, age, gender, zip_code):
         if User.query.filter_by(username=username).first():
             return None, "Username already taken!"
-        assigned_id = UniqueIdAssigner.assign()
-        user = User(
-            username=username,
-            unique_id=assigned_id,
-            role='Resident',
-            email=email,
-            age=int(age),
-            gender=gender,
-            zip_code=zip_code
-        )
-        user.save()
+        assigned_id = random.choice(["UID-992-XQ-2026", "UID-118-BT-7734", "UID-404-NM-8812",
+                                     "UID-607-TR-1190", "UID-223-KL-5561", "UID-884-PL-0092",
+                                     "UID-331-VB-4478", "UID-559-QA-3321", "UID-770-MK-6610",
+                                     "UID-101-ZZ-9943", "UID-778-PK-9031", "UID-501-VN-3158",
+                                     "UID-457-XJ-8213", "UID-182-WP-0492", "UID-839-LK-5740",
+                                     "UID-204-RA-6651", "UID-571-ND-3986", "UID-690-MB-1127",
+                                     "UID-925-CV-9094", "UID-346-QT-2703", "UID-778-BG-4568",
+                                     "UID-013-SF-6245", "UID-462-HU-8819", "UID-508-EY-3307",
+                                     "UID-639-DT-7432", "UID-297-OV-1850", "UID-841-GJ-5623",
+                                     "UID-115-ZM-6974", "UID-674-AP-9081", "UID-430-FX-2746",
+                                     "UID-956-KW-4115", "UID-289-LC-3392", "UID-573-BV-7803",
+                                     "UID-702-NR-2168", "UID-817-JE-0457", "UID-038-HQ-8940",
+                                     "UID-264-SY-5093", "UID-496-UT-6721", "UID-141-WA-9567",
+                                     "UID-685-GP-3084", "UID-329-EC-7835", "UID-954-MZ-4002",
+                                     "UID-470-AH-6378", "UID-613-DJ-1594", "UID-226-RO-2460"])
+        user = User(username=username, unique_id=assigned_id, role='Resident',
+                    email=email, age=int(age), gender=gender, zip_code=zip_code)
+        db.session.add(user)
+        db.session.commit()
         return assigned_id, None
-
+    
     @staticmethod
-    def authenticate_user(username, provided_id):
-        user = User.query.filter_by(username=username, unique_id=provided_id).first()
+    def login_user(username, unique_id):
+        user = User.query.filter_by(username=username, unique_id=unique_id).first()
         if user:
             return user, 'user'
-        admin = Admin.query.filter_by(username=username, unique_id=provided_id).first()
+        admin = Admin.query.filter_by(username=username, unique_id=unique_id).first()
         if admin:
             return admin, 'admin'
         return None, None
 
-
-# ===================== ORIGINAL HELPER FUNCTIONS (unchanged signatures) =====================
+# ------------------ HELPER FUNCTIONS (KEPT FOR EXTERNAL USE) ------------------
 def allowed_file(filename):
-    """Kept exactly as before, now delegates to FileValidator."""
-    return FileValidator.allowed_file(filename, app.config['ALLOWED_EXTENSIONS'])
-
+    return DocumentService.allowed_file(filename)
 
 def generate_tracking_id():
-    """Kept exactly as before, now delegates to TrackingIdGenerator."""
-    return TrackingIdGenerator.generate()
+    return DocumentService.generate_tracking_id()
 
-
-# ------------------ INITIALIZE DB & ADMINS (unchanged behaviour) ------------------
+# ------------------ INITIALIZE DB & ADMINS ------------------
 with app.app_context():
     db.create_all()
     default_admins = {
@@ -336,11 +265,10 @@ with app.app_context():
     }
     for username, data in default_admins.items():
         if not Admin.query.filter_by(username=username).first():
-            admin = Admin(username=username, unique_id=data["unique_id"], office=data["office"])
-            admin.save()
+            db.session.add(Admin(username=username, unique_id=data["unique_id"], office=data["office"]))
+    db.session.commit()
 
-
-# ===================== EXISTING ROUTE FUNCTIONS (unchanged signatures, internal OOP delegation) =====================
+# ------------------ ROUTES (UNCHANGED FUNCTION NAMES AND BEHAVIOR) ------------------
 @app.route('/')
 def home():
     if 'username' in session:
@@ -348,7 +276,6 @@ def home():
             return redirect(url_for('admin_dashboard'))
         return redirect(url_for('user_dashboard'))
     return redirect(url_for('login'))
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -358,32 +285,30 @@ def register():
         age = request.form.get('age')
         gender = request.form.get('gender')
         zip_code = request.form.get('zip')
-
+        
         if not all([username, email, age, gender, zip_code]):
             return "All fields are required. <a href='/register'>Go back</a>"
-
-        assigned_id, error = UserService.register_user(username, email, age, gender, zip_code)
+        
+        assigned_id, error = AuthService.register_user(username, email, age, gender, zip_code)
         if error:
             return f"{error} <a href='/register'>Try again</a>"
-
+        
         flash(f'Registration successful! Your Unique ID is: {assigned_id}. Please log in.', 'success')
         return redirect(url_for('login'))
-
+    
     return render_template('signup.html')
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         provided_id = request.form['password']
-        user_or_admin, auth_type = UserService.authenticate_user(username, provided_id)
-
-        if auth_type == 'user':
+        user_or_admin, role = AuthService.login_user(username, provided_id)
+        if role == 'user':
             session['user'] = user_or_admin.username
             session['role'] = user_or_admin.role
             return redirect('/userdashboard')
-        elif auth_type == 'admin':
+        elif role == 'admin':
             session['user'] = user_or_admin.username
             session['role'] = 'office'
             session['office'] = user_or_admin.office
@@ -396,7 +321,6 @@ def login():
         return render_template('login.html', message='Invalid ID or Username')
     return render_template('login.html')
 
-
 @app.route('/logout')
 def logout():
     session.clear()
@@ -404,13 +328,11 @@ def logout():
     resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return resp
 
-
 @app.route('/userdashboard')
 def userdashboard():
     if "user" not in session:
         return redirect('/login')
     return render_template('userdashboard.html')
-
 
 @app.route('/office1')
 def office1():
@@ -418,13 +340,11 @@ def office1():
         return redirect('/login')
     return render_template('admindashboard.html')
 
-
 @app.route('/office2')
 def office2():
     if session.get("office") != "City Mayor":
         return redirect('/login')
     return render_template('2admindashboard.html')
-
 
 @app.route('/office3')
 def office3():
@@ -432,13 +352,11 @@ def office3():
         return redirect('/login')
     return render_template('3admindashboard.html')
 
-
 @app.route('/reports')
 def reporting_dashboard():
     if "user" not in session:
         return redirect('/login')
     return render_template('DocumentReports.html')
-
 
 @app.route('/api/all_reports')
 def get_all_reports():
@@ -446,7 +364,6 @@ def get_all_reports():
         return jsonify([])
     docs = Document.query.all()
     return jsonify([doc.to_dict() for doc in docs])
-
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -458,127 +375,117 @@ def upload_file():
     office = request.form.get('office')
     if session.get('role') == 'Resident':
         office = "Office 1"
-
     if file and allowed_file(file.filename):
-        filename = FileValidator.secure_save(file, app.config['UPLOAD_FOLDER'])
-        tracking_id = generate_tracking_id()
-        doc = Document(
-            tracking_id=tracking_id,
-            title=title,
-            description=desc,
-            office=office,
-            target_office=office,
-            filename=filename,
-            status='PENDING',
-            uploaded_by=session.get('user')
-        )
-        doc.save()
+        doc = DocumentService.save_upload(file, title, desc, office, session.get('user'))
         return jsonify(doc.to_dict())
     return jsonify({"error": "Invalid file type"})
-
 
 @app.route('/office1/documents')
 def office1_documents():
     if session.get("office") != "Barangay Officials":
         return jsonify([])
-    handler = BarangayHandler()
-    docs = handler.get_documents_query().all()
+    docs = DocumentService.get_documents_by_office("Barangay Officials", ["APPROVED BY BARANGAY", "DECLINED BY BARANGAY"])
     return jsonify([doc.to_dict() for doc in docs])
-
 
 @app.route('/office2/documents')
 def office2_documents():
     if session.get("office") != "City Mayor":
         return jsonify([])
-    handler = MayorHandler()
-    docs = handler.get_documents_query().all()
+    docs = DocumentService.get_documents_by_office("City Mayor", ["APPROVED BY MAYOR", "DECLINED BY MAYOR"])
     return jsonify([doc.to_dict() for doc in docs])
-
 
 @app.route('/office3/documents')
 def office3_documents():
     if session.get("office") != "Provincial Governor":
         return jsonify([])
-    handler = GovernorHandler()
-    docs = handler.get_documents_query().all()
+    docs = DocumentService.get_documents_by_office("Provincial Governor", ["APPROVED BY GOVERNOR (FINAL)", "DECLINED BY GOVERNOR"])
     return jsonify([doc.to_dict() for doc in docs])
 
+# Polymorphic approval/decline using handlers
+def get_handler_for_office(office_name):
+    if office_name == "Barangay Officials":
+        return BarangayHandler()
+    elif office_name == "City Mayor":
+        return MayorHandler()
+    elif office_name == "Provincial Governor":
+        return GovernorHandler()
+    return None
 
 @app.route('/approve/<filename>', methods=['POST'])
 def approve_brgy(filename):
     doc = Document.query.filter_by(filename=filename).first()
     if doc:
-        doc.approve_by_brgy()
+        handler = get_handler_for_office("Barangay Officials")
+        handler.approve(doc)
         return jsonify({"success": True})
     return jsonify({"error": "Not found"})
-
 
 @app.route('/mayor/approve/<filename>', methods=['POST'])
 def approve_mayor(filename):
     doc = Document.query.filter_by(filename=filename).first()
     if doc:
-        doc.approve_by_mayor()
+        handler = get_handler_for_office("City Mayor")
+        handler.approve(doc)
         return jsonify({"success": True})
     return jsonify({"error": "Not found"})
-
 
 @app.route('/governor/approve/<filename>', methods=['POST'])
 def approve_gov(filename):
     doc = Document.query.filter_by(filename=filename).first()
     if doc:
-        doc.approve_by_governor()
+        handler = get_handler_for_office("Provincial Governor")
+        handler.approve(doc)
         return jsonify({"success": True})
     return jsonify({"error": "Not found"})
-
 
 @app.route('/decline/<filename>', methods=['POST'])
 def decline_brgy(filename):
     reason = request.json.get('reason', 'No reason provided')
     doc = Document.query.filter_by(filename=filename).first()
     if doc:
-        doc.decline_by_brgy(reason)
+        handler = get_handler_for_office("Barangay Officials")
+        handler.decline(doc, reason)
         return jsonify({"success": True})
     return jsonify({"error": "Not found"})
-
 
 @app.route('/mayor/decline/<filename>', methods=['POST'])
 def decline_mayor(filename):
     reason = request.json.get('reason', 'No reason provided')
     doc = Document.query.filter_by(filename=filename).first()
     if doc:
-        doc.decline_by_mayor(reason)
+        handler = get_handler_for_office("City Mayor")
+        handler.decline(doc, reason)
         return jsonify({"success": True})
     return jsonify({"error": "Not found"})
-
 
 @app.route('/governor/decline/<filename>', methods=['POST'])
 def decline_gov(filename):
     reason = request.json.get('reason', 'No reason provided')
     doc = Document.query.filter_by(filename=filename).first()
     if doc:
-        doc.decline_by_governor(reason)
+        handler = get_handler_for_office("Provincial Governor")
+        handler.decline(doc, reason)
         return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
-
 @app.route('/forward_to_mayor/<tracking_id>', methods=['POST'])
 def forward_to_mayor(tracking_id):
-    doc = Document.query.filter_by(tracking_id=tracking_id, status="APPROVED BY BARANGAY").first()
-    if doc and doc.forward_to_mayor():
+    success = DocumentService.forward_to_next_office(tracking_id, "APPROVED BY BARANGAY", "Office 2", "PENDING (MAYOR)")
+    if success:
         return jsonify({"success": True})
     return jsonify({"error": "Not eligible for forwarding"})
-
 
 @app.route('/forward_to_governor/<tracking_id>', methods=['POST'])
 def forward_to_governor(tracking_id):
-    doc = Document.query.filter_by(tracking_id=tracking_id, status="APPROVED BY MAYOR").first()
-    if doc and doc.forward_to_governor():
+    success = DocumentService.forward_to_next_office(tracking_id, "APPROVED BY MAYOR", "Office 3", "PENDING (GOVERNOR)")
+    if success:
         return jsonify({"success": True})
     return jsonify({"error": "Not eligible for forwarding"})
-
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# ------------------ END OF FILE ------------------
+# Required for Vercel
+if __name__ == '__main__':
+    app.run()
