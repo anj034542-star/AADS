@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Final Reports Dashboard</title>
 
 <!-- Bootstrap -->
@@ -91,7 +92,7 @@ body {
 
                     <!-- Report Type -->
                     <div class="col-md-3">
-                        <label>Report Type</label>
+                        <label for="reportType">Report Type</label>
                         <select id="reportType" class="form-select">
                             <option value="ALL">All Reports</option>
                             <option value="PENDING">Pending</option>
@@ -102,7 +103,7 @@ body {
 
                     <!-- Status -->
                     <div class="col-md-3">
-                        <label>Status</label>
+                        <label for="statusFilter">Status</label>
                         <select id="statusFilter" class="form-select">
                             <option value="">All</option>
                             <option value="PENDING">Pending</option>
@@ -120,8 +121,8 @@ body {
 
                     <!-- Date -->
                     <div class="col-md-3">
-                        <label>Date (Optional)</label>
-                        <input type="date" id="dateFilter" class="form-control">
+                        <label for="dateFilter">Date (Optional)</label>
+                        <input type="date" id="dateFilter" class="form-control" placeholder="Select date">
                     </div>
 
                 </div>
