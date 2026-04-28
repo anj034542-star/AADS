@@ -5,6 +5,7 @@ from datetime import datetime
 from flask import Flask, render_template, redirect, request, session, send_from_directory, jsonify, make_response, flash, url_for
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
+from zoneinfo import ZoneInfo
 
 # ------------------ CONFIGURATION ------------------
 app = Flask(__name__)
@@ -20,6 +21,11 @@ app.config['ALLOWED_EXTENSIONS'] = {'doc', 'docx', 'excel', 'xlsx'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db = SQLAlchemy(app)
+
+# [TIME] Helper to get current Philippine time (UTC+8)
+def get_ph_time():
+    """Return current datetime in Philippine Standard Time (Asia/Manila)"""
+    return datetime.now(ZoneInfo('Asia/Manila'))
 
 # ------------------ MODELS WITH ENCAPSULATION ------------------
 class BaseModel(db.Model):
@@ -40,7 +46,6 @@ class User(BaseModel):
     gender = db.Column(db.String(10), nullable=False)
     zip_code = db.Column(db.String(10), nullable=False)
 
-    # Encapsulation: private attributes via properties (optional)
     @property
     def full_name(self):
         return self.username
@@ -72,8 +77,16 @@ class Document(BaseModel):
     declined_by = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     uploaded_by = db.Column(db.String(80))
+    # [TIME] New columns for processing time tracking
+    process_start_time = db.Column(db.DateTime, nullable=True)
+    process_end_time = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
+        # [TIME] Include start/end times and compute duration in seconds
+        duration = None
+        if self.process_start_time and self.process_end_time:
+            delta = self.process_end_time - self.process_start_time
+            duration = delta.total_seconds()
         return {
             'tracking_id': self.tracking_id,
             'title': self.title,
@@ -84,13 +97,14 @@ class Document(BaseModel):
             'status': self.status,
             'decline_reason': self.decline_reason,
             'declined_by': self.declined_by,
-            'created_at': self.created_at.strftime('%Y-%m-%d') if self.created_at else ''
+            'created_at': self.created_at.strftime('%Y-%m-%d') if self.created_at else '',
+            'process_start_time': self.process_start_time.strftime('%Y-%m-%d %H:%M:%S') if self.process_start_time else None,
+            'process_end_time': self.process_end_time.strftime('%Y-%m-%d %H:%M:%S') if self.process_end_time else None,
+            'processing_duration_seconds': duration,
         }
 
 # ------------------ ABSTRACT BASE CLASS FOR DOCUMENT HANDLERS ------------------
 class DocumentHandler(ABC):
-    """Abstract class for document approval/decline workflows."""
-    
     @abstractmethod
     def approve(self, document):
         pass
@@ -107,12 +121,14 @@ class DocumentHandler(ABC):
 class BarangayHandler(DocumentHandler):
     def approve(self, document):
         document.status = "APPROVED BY BARANGAY"
+        document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
     
     def decline(self, document, reason):
         document.status = "DECLINED BY BARANGAY"
         document.decline_reason = reason
         document.declined_by = "Barangay Officials"
+        document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
     
     def get_office_name(self):
@@ -121,12 +137,14 @@ class BarangayHandler(DocumentHandler):
 class MayorHandler(DocumentHandler):
     def approve(self, document):
         document.status = "APPROVED BY MAYOR"
+        document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
     
     def decline(self, document, reason):
         document.status = "DECLINED BY MAYOR"
         document.decline_reason = reason
         document.declined_by = "City Mayor"
+        document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
     
     def get_office_name(self):
@@ -135,12 +153,14 @@ class MayorHandler(DocumentHandler):
 class GovernorHandler(DocumentHandler):
     def approve(self, document):
         document.status = "APPROVED BY GOVERNOR (FINAL)"
+        document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
     
     def decline(self, document, reason):
         document.status = "DECLINED BY GOVERNOR"
         document.decline_reason = reason
         document.declined_by = "Provincial Governor"
+        document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
     
     def get_office_name(self):
@@ -148,8 +168,6 @@ class GovernorHandler(DocumentHandler):
 
 # ------------------ SERVICE CLASSES (ENCAPSULATION) ------------------
 class DocumentService:
-    """Encapsulates document-related operations."""
-    
     @staticmethod
     def generate_tracking_id():
         return f"TRK-{random.randint(10000,99999)}"
@@ -179,7 +197,8 @@ class DocumentService:
             target_office=office,
             filename=filename,
             status='PENDING',
-            uploaded_by=username
+            uploaded_by=username,
+            process_start_time=get_ph_time()  # [TIME] start timer on upload
         )
         db.session.add(doc)
         db.session.commit()
@@ -211,8 +230,6 @@ class DocumentService:
         return False
 
 class AuthService:
-    """Encapsulates authentication and user management."""
-    
     @staticmethod
     def register_user(username, email, age, gender, zip_code):
         if User.query.filter_by(username=username).first():
@@ -248,7 +265,7 @@ class AuthService:
             return admin, 'admin'
         return None, None
 
-# ------------------ HELPER FUNCTIONS (KEPT FOR EXTERNAL USE) ------------------
+# ------------------ HELPER FUNCTIONS ------------------
 def allowed_file(filename):
     return DocumentService.allowed_file(filename)
 
@@ -268,7 +285,7 @@ with app.app_context():
             db.session.add(Admin(username=username, unique_id=data["unique_id"], office=data["office"]))
     db.session.commit()
 
-# ------------------ ROUTES (UNCHANGED FUNCTION NAMES AND BEHAVIOR) ------------------
+# ------------------ ROUTES ------------------
 @app.route('/')
 def home():
     if 'username' in session:
@@ -401,7 +418,6 @@ def office3_documents():
     docs = DocumentService.get_documents_by_office("Provincial Governor", ["APPROVED BY GOVERNOR (FINAL)", "DECLINED BY GOVERNOR"])
     return jsonify([doc.to_dict() for doc in docs])
 
-# Polymorphic approval/decline using handlers
 def get_handler_for_office(office_name):
     if office_name == "Barangay Officials":
         return BarangayHandler()
@@ -486,6 +502,5 @@ def forward_to_governor(tracking_id):
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# Required for Vercel
 if __name__ == '__main__':
     app.run()
