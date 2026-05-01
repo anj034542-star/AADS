@@ -1,347 +1,478 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Resident Dashboard</title>
-<style>
-body {
-  margin: 0;
-  font-family: "Segoe UI", sans-serif;
-  display: flex;
-  background: #eef2f7;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resident Portal - Document Management</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --sidebar-bg: #0f172a;
+            --office-bg: #f8fafc;
+            --border-color: #e2e8f0;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+        }
 
-.sidebar {
-  width: 250px;
-  height: 100vh;
-  background: #1e293b;
-  color: white;
-  padding: 20px;
-}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-.sidebar h2 {
-  text-align: center;
-  margin-bottom: 40px;
-}
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--office-bg);
+            color: var(--text-dark);
+            display: flex;
+            min-height: 100vh;
+        }
 
-.sidebar a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  margin-bottom: 10px;
-  color: #cbd5e1;
-  text-decoration: none;
-  border-radius: 8px;
-}
+        /* Sidebar - Professional Slate */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }
 
-.sidebar a:hover {
-  background: #334155;
-  color: white;
-}
+        .sidebar-header {
+            padding: 30px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
 
-.main {
-  flex: 1;
-  padding: 30px;
-}
+        .sidebar h2 {
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+        .sidebar-nav {
+            padding: 20px 12px;
+            flex-grow: 1;
+        }
 
-.btn {
-  background: #2563eb;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            color: #94a3b8;
+            text-decoration: none;
+            padding: 12px 16px;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
 
-.form-card {
-  background: white;
-  padding: 20px;
-  margin-top: 20px;
-  border-radius: 12px;
-  display: none;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-}
+        .sidebar a:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
 
-input, textarea, select {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
+        /* Main Workspace */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
 
-.card {
-  background: white;
-  padding: 15px;
-  margin-top: 15px;
-  border-radius: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.05);
-  flex-wrap: wrap;
-}
+        .top-nav {
+            background: white;
+            padding: 15px 40px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-.card-left {
-  max-width: 70%;
-  flex: 1;
-}
+        .content-area {
+            padding: 30px 40px;
+            max-width: 1000px;
+        }
 
-.status {
-  font-weight: bold;
-}
+        /* Buttons - Flat & Corporate */
+        .btn {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-.pending { color: #f59e0b; }
-.approved { color: #22c55e; }
-.declined { color: #ef4444; }
+        .btn:hover { background: #1d4ed8; }
 
-.actions a {
-  text-decoration: none;
-  font-size: 18px;
-  margin-left: 10px;
-}
+        /* Form Card */
+        .form-card {
+            background: white;
+            padding: 24px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
 
-.time-info {
-  font-size: 12px;
-  color: #555;
-  margin-top: 8px;
-  border-top: 1px solid #eee;
-  padding-top: 6px;
-}
-</style>
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9rem;
+            background: #fff;
+        }
+
+        input:focus {
+            outline: 2px solid #bfdbfe;
+            border-color: var(--primary);
+        }
+
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 25px;
+        }
+
+        /* Document Folders (Cards) */
+        .card {
+            background: white;
+            padding: 24px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .card-left {
+            max-width: 75%;
+        }
+
+        .card-left strong {
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 4px;
+            color: var(--sidebar-bg);
+        }
+
+        .tracking-id {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
+        .status {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+
+        .pending { background: #fef3c7; color: #92400e; }
+        .approved { background: #dcfce7; color: #166534; }
+        .declined { background: #fee2e2; color: #991b1b; }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .actions a {
+            text-decoration: none;
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .actions a:hover { text-decoration: underline; }
+
+        .time-info {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 15px;
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; }
+            .card { flex-direction: column; }
+            .actions { align-items: flex-start; margin-top: 15px; }
+        }
+    </style>
 </head>
 <body>
 
-<div class="sidebar">
-  <h2>Resident Panel</h2>
-  <a href="#" onclick="showAll()">🏠 My Documents</a>
-  <a href="/logout">🚪 Logout</a>
-</div>
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <h2>Resident OS</h2>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="#" onclick="showAll()">📁 My Documents</a>
+        <a href="/logout">🔓 Sign Out</a>
+    </nav>
+</aside>
 
 <div class="main">
-  <div class="header">
-    <h1>Your Document Status</h1>
-    <button class="btn" onclick="toggleForm()">+ Upload New</button>
-  </div>
+    <header class="top-nav">
+        <div class="nav-left">
+            <h1 style="font-size: 1.25rem; font-weight: 700;">Document Repository</h1>
+        </div>
+        <button class="btn" onclick="toggleForm()">+ New Submission</button>
+    </header>
 
-  <div style="margin-top:20px;">
-    <input type="text" id="searchInput" placeholder="🔍 Search by Tracking ID..." onkeyup="searchDocs()" style="width: 300px; padding:10px; border-radius:8px; border:1px solid #ccc;">
-  </div>
+    <div class="content-area">
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search by Tracking ID..." onkeyup="searchDocs()" style="max-width: 400px; margin:0;">
+        </div>
 
-  <!-- Upload Form -->
-  <div class="form-card" id="docForm">
-    <input type="text" id="docTitle" placeholder="Title">
-    <textarea id="docDesc" placeholder="Description"></textarea>
-    <select id="docOffice" style="display:none;">
-      <option value="Office 1" selected>Office 1</option>
-    </select>
-    <p style="color:gray;">Documents are always first sent to Office 1 (Barangay).</p>
-    <input type="file" id="docFile" accept=".doc,.docx,.xls,.xlsx">
-    <button class="btn" onclick="saveDocument()">Upload</button>
-  </div>
+        <!-- Upload Form -->
+        <div class="form-card" id="docForm">
+            <h3 style="margin-bottom: 15px;">New Document Submission</h3>
+            <label style="font-size:0.8rem; font-weight:600;">Title</label>
+            <input type="text" id="docTitle" placeholder="e.g. Clearance Request">
+            <label style="font-size:0.8rem; font-weight:600;">Purpose / Description</label>
+            <textarea id="docDesc" placeholder="State the reason for this submission..."></textarea>
+            <select id="docOffice" style="display:none;">
+                <option value="Office 1" selected>Office 1</option>
+            </select>
+            <p style="color:var(--text-muted); font-size: 0.75rem; margin-bottom: 15px;">
+                Note: All submissions are initially routed to the Barangay Office for verification.
+            </p>
+            <label style="font-size:0.8rem; font-weight:600;">Attach Document</label>
+            <input type="file" id="docFile" accept=".doc,.docx,.xls,.xlsx">
+            <div style="display:flex; gap:10px;">
+                <button class="btn" onclick="saveDocument()">Process Upload</button>
+                <button class="btn" style="background:#64748b;" onclick="toggleForm()">Cancel</button>
+            </div>
+        </div>
 
-  <!-- Document List -->
-  <div id="documentsList"></div>
+        <!-- Document List -->
+        <div id="documentsList"></div>
+    </div>
 </div>
 
 <script>
 let allDocs = [];
 
 function toggleForm() {
-  const form = document.getElementById('docForm');
-  form.style.display = form.style.display === 'block' ? 'none' : 'block';
+    const form = document.getElementById('docForm');
+    form.style.display = form.style.display === 'block' ? 'none' : 'block';
 }
 
 function saveDocument() {
-  const title = document.getElementById('docTitle').value.trim();
-  const desc = document.getElementById('docDesc').value.trim();
-  const office = document.getElementById('docOffice').value;
-  const fileInput = document.getElementById('docFile');
+    const title = document.getElementById('docTitle').value.trim();
+    const desc = document.getElementById('docDesc').value.trim();
+    const office = document.getElementById('docOffice').value;
+    const fileInput = document.getElementById('docFile');
 
-  if (!title || !desc || !office || !fileInput.files.length) {
-    alert("All fields required!");
-    return;
-  }
-
-  const file = fileInput.files[0];
-  const allowed = ['doc','docx','xls','xlsx'];
-  const ext = file.name.split('.').pop().toLowerCase();
-
-  if (!allowed.includes(ext)) {
-    alert("Only Word/Excel allowed!");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("desc", desc);
-  formData.append("office", office);
-  formData.append("file", file);
-
-  fetch('/upload', {
-    method: 'POST',
-    body: formData
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.error) {
-      alert(data.error);
-      return;
+    if (!title || !desc || !office || !fileInput.files.length) {
+        alert("All fields required!");
+        return;
     }
-    allDocs.push(data);
-    renderDocs(allDocs);
-    document.getElementById('docTitle').value = '';
-    document.getElementById('docDesc').value = '';
-    document.getElementById('docOffice').value = '';
-    fileInput.value = '';
-    document.getElementById('docForm').style.display = 'none';
-  })
-  .catch(err => {
-    alert("Upload failed!");
-    console.error(err);
-  });
+
+    const file = fileInput.files[0];
+    const allowed = ['doc','docx','xls','xlsx'];
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    if (!allowed.includes(ext)) {
+        alert("Only Word/Excel allowed!");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("desc", desc);
+    formData.append("office", office);
+    formData.append("file", file);
+
+    fetch('/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        allDocs.push(data);
+        renderDocs(allDocs);
+        document.getElementById('docTitle').value = '';
+        document.getElementById('docDesc').value = '';
+        fileInput.value = '';
+        document.getElementById('docForm').style.display = 'none';
+    })
+    .catch(err => {
+        alert("Upload failed!");
+        console.error(err);
+    });
 }
 
-// Helper to format seconds into "X min Y sec"
 function formatDuration(seconds) {
-  if (!seconds && seconds !== 0) return '—';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  if (mins === 0) return `${secs} sec`;
-  return `${mins} min ${secs} sec`;
+    if (!seconds && seconds !== 0) return '—';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    if (mins === 0) return `${secs} sec`;
+    return `${mins} min ${secs} sec`;
 }
 
 function renderDocs(docs) {
-  const list = document.getElementById('documentsList');
-  list.innerHTML = '';
+    const list = document.getElementById('documentsList');
+    list.innerHTML = '';
 
-  docs.forEach(doc => {
-    let statusClass = "pending";
-    let statusText = doc.status || "PENDING";
-
-    // Determine status color class
-    if (statusText.includes("APPROVED")) statusClass = "approved";
-    if (statusText.includes("DECLINED")) statusClass = "declined";
-
-    let forwardButton = "";
-
-    if (doc.status === "APPROVED BY BARANGAY") {
-      forwardButton = `<button class="btn" style="background:#3b82f6;" onclick="forwardDocument('${doc.tracking_id}', 'mayor')">➡️ Forward to Mayor</button>`;
-    } else if (doc.status === "APPROVED BY MAYOR") {
-      forwardButton = `<button class="btn" style="background:#3b82f6;" onclick="forwardDocument('${doc.tracking_id}', 'governor')">➡️ Forward to Governor</button>`;
+    if(docs.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">No documents found in your repository.</div>';
+        return;
     }
 
-    let declineHtml = "";
-    if (statusText.includes("DECLINED")) {
-      declineHtml = `<div style="background:#fee2e2; padding:8px; margin-top:8px; border-radius:6px;">
-        <strong>📢 ${doc.declined_by || "An office"} declined:</strong><br>${doc.decline_reason || "No reason given"}
-      </div>`;
-    }
+    docs.forEach(doc => {
+        let statusClass = "pending";
+        let statusText = doc.status || "PENDING";
 
-    // Time tracking data
-    const startTime = doc.process_start_time ? doc.process_start_time : null;
-    const endTime = doc.process_end_time ? doc.process_end_time : null;
-    const durationSeconds = doc.processing_duration_seconds;
-    
-    let timeHtml = `<div class="time-info">
-      <strong>⏱️ Processing Timeline (Philippine Time):</strong><br>
-      📅 Started: ${startTime || 'Not recorded'}<br>
-      🏁 Finished: ${endTime || 'Still in process'}<br>
-      ⏲️ Duration: ${endTime ? formatDuration(durationSeconds) : '— (pending)'}
-    </div>`;
+        if (statusText.includes("APPROVED")) statusClass = "approved";
+        if (statusText.includes("DECLINED")) statusClass = "declined";
 
-    const div = document.createElement('div');
-    div.className = "card";
-    div.innerHTML = `
-      <div class="card-left">
-        <strong>${escapeHtml(doc.title)}</strong><br>
-        <small><b>ID:</b> ${doc.tracking_id}</small>
-        <p>${escapeHtml(doc.desc)}</p>
-        <small><b>Current office:</b> ${doc.target_office || doc.office}</small><br>
-        <span class="status ${statusClass}">${statusText}</span>
-        ${declineHtml}
-        ${timeHtml}
-      </div>
-      <div class="actions">
-        <a href="/uploads/${doc.filename}" target="_blank">📂 Open File</a>
-        ${forwardButton}
-      </div>
-    `;
-    list.appendChild(div);
-  });
+        let forwardButton = "";
+        if (doc.status === "APPROVED BY BARANGAY") {
+            forwardButton = `<button class="btn" style="background:#2563eb;" onclick="forwardDocument('${doc.tracking_id}', 'mayor')">Forward to Mayor Office</button>`;
+        } else if (doc.status === "APPROVED BY MAYOR") {
+            forwardButton = `<button class="btn" style="background:#2563eb;" onclick="forwardDocument('${doc.tracking_id}', 'governor')">Forward to Governor Office</button>`;
+        }
+
+        let declineHtml = "";
+        if (statusText.includes("DECLINED")) {
+            declineHtml = `<div style="background:#fee2e2; padding:12px; margin-top:12px; border-radius:6px; border-left:4px solid #ef4444; font-size:0.9rem;">
+                <strong>Rejection Note:</strong> ${doc.decline_reason || "No reason given"}
+              </div>`;
+        }
+
+        const startTime = doc.process_start_time || 'Pending';
+        const endTime = doc.process_end_time || 'In Progress';
+        const durationSeconds = doc.processing_duration_seconds;
+        
+        let timeHtml = `<div class="time-info">
+            <strong>Log Details:</strong><br>
+            • Initiated: ${startTime}<br>
+            • Finalized: ${endTime}<br>
+            • Processing Time: ${endTime !== 'In Progress' ? formatDuration(durationSeconds) : 'N/A'}
+        </div>`;
+
+        const div = document.createElement('div');
+        div.className = "card";
+        div.innerHTML = `
+            <div class="card-left">
+                <span class="tracking-id">REF# ${doc.tracking_id}</span>
+                <strong>${escapeHtml(doc.title)}</strong>
+                <p style="margin-top:10px;">${escapeHtml(doc.desc)}</p>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin: 8px 0;">
+                    <b>Current Jurisdiction:</b> ${doc.target_office || doc.office}
+                </div>
+                <span class="status ${statusClass}">${statusText}</span>
+                ${declineHtml}
+                ${timeHtml}
+            </div>
+            <div class="actions">
+                <a href="/uploads/${doc.filename}" target="_blank">📄 View Document</a>
+                ${forwardButton}
+            </div>
+        `;
+        list.appendChild(div);
+    });
 }
 
-// Simple escape to prevent XSS
 function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/[&<>]/g, function(m) {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    return m;
-  });
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
 function forwardDocument(trackingId, target) {
-  let url = "";
-  if (target === "mayor") url = `/forward_to_mayor/${trackingId}`;
-  else if (target === "governor") url = `/forward_to_governor/${trackingId}`;
-  
-  fetch(url, { method: 'POST' })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert("Document forwarded to next office!");
-        loadDocs(); // refresh list
-      } else {
-        alert("Cannot forward: " + (data.error || "Invalid status"));
-      }
-    })
-    .catch(err => alert("Forwarding failed"));
+    let url = "";
+    if (target === "mayor") url = `/forward_to_mayor/${trackingId}`;
+    else if (target === "governor") url = `/forward_to_governor/${trackingId}`;
+    
+    fetch(url, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("Success: Document routed to next administrative office.");
+                loadDocs();
+            } else {
+                alert("Routing Error: " + (data.error || "Invalid status"));
+            }
+        })
+        .catch(err => alert("Routing process failed"));
 }
 
 function showAll() {
-  renderDocs(allDocs);
+    renderDocs(allDocs);
 }
 
 function searchDocs() {
-  const input = document.getElementById('searchInput').value.toLowerCase().trim();
-  if (input === "") {
-    renderDocs(allDocs);
-    return;
-  }
-  const filtered = allDocs.filter(doc => doc.tracking_id && doc.tracking_id.toLowerCase().includes(input));
-  if (filtered.length === 0) {
-    document.getElementById('documentsList').innerHTML = `
-      <div style="background:white; padding:20px; margin-top:20px; border-radius:10px; text-align:center; color:#ef4444; font-weight:bold;">
-        ❌ Tracking ID not found
-      </div>
-    `;
-    return;
-  }
-  renderDocs(filtered);
+    const input = document.getElementById('searchInput').value.toLowerCase().trim();
+    if (input === "") {
+        renderDocs(allDocs);
+        return;
+    }
+    const filtered = allDocs.filter(doc => doc.tracking_id && doc.tracking_id.toLowerCase().includes(input));
+    if (filtered.length === 0) {
+        document.getElementById('documentsList').innerHTML = `
+            <div style="background:white; border: 1px solid #fecaca; padding:20px; margin-top:20px; border-radius:8px; text-align:center; color:#ef4444;">
+                Search Result: No document found with Tracking ID "<b>${input}</b>"
+            </div>
+        `;
+        return;
+    }
+    renderDocs(filtered);
 }
 
 function loadDocs() {
-  fetch('/api/all_reports')
-    .then(res => res.json())
-    .then(data => {
-      allDocs = data;
-      renderDocs(allDocs);
-    })
-    .catch(err => console.error(err));
+    fetch('/api/all_reports')
+        .then(res => res.json())
+        .then(data => {
+            allDocs = data;
+            renderDocs(allDocs);
+        })
+        .catch(err => console.error(err));
 }
 
 window.onload = function() {
-  loadDocs();
+    loadDocs();
 };
 </script>
 </body>
