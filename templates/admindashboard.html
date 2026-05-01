@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barangay Office - Document Management</title>
     <style>
+        :root {
+            --primary: #2563eb;
+            --sidebar-bg: #1e293b;
+            --bg-body: #f8fafc;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,150 +21,228 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f1f5f9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
             display: flex;
             min-height: 100vh;
         }
 
-        /* Sidebar */
+        /* Sidebar - Professional Slate */
         .sidebar {
-            width: 280px;
-            background: linear-gradient(180deg, #0f172a, #1e293b);
+            width: 260px;
+            background: var(--sidebar-bg);
             color: white;
-            padding: 30px 20px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255,255,255,0.1);
         }
 
-        .sidebar h2 {
-            font-size: 1.6rem;
-            margin-bottom: 10px;
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
-        .sidebar p {
-            font-size: 0.85rem;
-            color: #94a3b8;
-            margin-bottom: 40px;
+        .sidebar-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 12px;
         }
 
         .sidebar a {
-            display: block;
+            display: flex;
+            align-items: center;
             color: #cbd5e1;
             text-decoration: none;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 12px;
-            transition: 0.2s;
+            padding: 10px 12px;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
         }
 
         .sidebar a:hover {
-            background: #334155;
+            background: rgba(255,255,255,0.1);
             color: white;
         }
 
-        /* Main content */
+        /* Main Area */
         .main {
             flex: 1;
-            padding: 30px 40px;
-            overflow-x: auto;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-body);
         }
 
-        .header {
+        .top-nav {
+            height: 64px;
             background: white;
-            padding: 20px 25px;
-            border-radius: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+            justify-content: space-between;
         }
 
-        .header h1 {
-            font-size: 1.8rem;
-            color: #0f172a;
+        .content-area {
+            padding: 30px 40px;
+            max-width: 1200px;
         }
 
+        .page-title {
+            margin-bottom: 24px;
+        }
+
+        .page-title h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .page-title p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Table-like Cards */
         .card {
             background: white;
-            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            border-left: 6px solid #3b82f6;
-            transition: 0.2s;
+            margin-bottom: 16px;
+            transition: box-shadow 0.2s;
         }
 
         .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
         }
 
         .card h3 {
-            margin-bottom: 10px;
-            color: #1e293b;
+            font-size: 1.1rem;
+            font-weight: 600;
         }
 
-        .card p {
+        .tracking-id {
+            font-family: monospace;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
             color: #475569;
-            margin: 8px 0;
         }
 
+        .card-desc {
+            font-size: 0.95rem;
+            color: #475569;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        /* Status Tags */
         .status {
-            font-weight: bold;
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
             font-size: 0.75rem;
-            margin: 10px 0;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
         }
 
-        .status-pending { background: #fef9c3; color: #854d0e; }
+        .status-pending { background: #fef3c7; color: #92400e; }
         .status-approved { background: #dcfce7; color: #166534; }
         .status-declined { background: #fee2e2; color: #991b1b; }
 
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: 600;
-            margin-right: 10px;
-            transition: 0.2s;
+        /* Buttons */
+        .action-group {
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+            display: flex;
+            gap: 10px;
         }
 
-        .btn-open { background: #3b82f6; color: white; }
-        .btn-approve { background: #22c55e; color: white; }
-        .btn-decline { background: #ef4444; color: white; }
+        .btn {
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
 
-        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-open { background: white; border-color: var(--border-color); color: var(--text-main); }
+        .btn-open:hover { background: #f8fafc; }
+
+        .btn-approve { background: var(--primary); color: white; }
+        .btn-approve:hover { background: #1d4ed8; }
+
+        .btn-decline { background: white; border-color: #fca5a5; color: #dc2626; }
+        .btn-decline:hover { background: #fef2f2; }
 
         .empty-state {
             text-align: center;
-            padding: 60px;
+            padding: 80px;
             background: white;
-            border-radius: 24px;
-            color: #64748b;
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            color: var(--text-muted);
         }
 
         @media (max-width: 768px) {
             body { flex-direction: column; }
-            .sidebar { width: 100%; text-align: center; }
-            .main { padding: 20px; }
+            .sidebar { width: 100%; border-right: none; }
+            .top-nav { padding: 0 20px; }
+            .content-area { padding: 20px; }
         }
     </style>
 </head>
 <body>
 
-<div class="sidebar">
-    <h2>🏛️ Barangay Office</h2>
-    <p>Document Approval Portal</p>
-    <a href="/logout">🚪 Logout</a>
-</div>
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <h2>Barangay OS</h2>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="#">Dashboard</a>
+        <a href="#">All Documents</a>
+        <a href="#">Archives</a>
+        <div style="margin-top: 40px; padding: 0 12px;">
+             <a href="/logout" style="border: 1px solid rgba(255,255,255,0.2)">Logout</a>
+        </div>
+    </nav>
+</aside>
 
 <div class="main">
-    <div class="header">
-        <h1>Incoming Documents</h1>
-        <p>Review and process resident submissions</p>
-    </div>
-    <div id="docList"></div>
+    <header class="top-nav">
+        <div class="breadcrumb" style="color: var(--text-muted); font-size: 0.85rem;">
+            Records / Incoming
+        </div>
+        <div class="user-profile" style="font-size: 0.85rem; font-weight: 500;">
+            Administrator
+        </div>
+    </header>
+
+    <main class="content-area">
+        <div class="page-title">
+            <h1>Document Queue</h1>
+            <p>Review and process incoming resident applications and requests.</p>
+        </div>
+        
+        <div id="docList"></div>
+    </main>
 </div>
 
 <script>
@@ -165,7 +252,7 @@
             .then(data => {
                 const container = document.getElementById('docList');
                 if (!data.length) {
-                    container.innerHTML = '<div class="empty-state">📭 No pending documents at the moment.</div>';
+                    container.innerHTML = '<div class="empty-state">No pending documents to review.</div>';
                     return;
                 }
                 container.innerHTML = '';
@@ -178,15 +265,19 @@
                     const card = document.createElement('div');
                     card.className = 'card';
                     card.innerHTML = `
-                        <h3>${escapeHtml(doc.title)}</h3>
-                        <p><strong>Tracking ID:</strong> ${doc.tracking_id}</p>
-                        <p>${escapeHtml(doc.desc)}</p>
-                        <p><strong>Submitted to:</strong> ${doc.office}</p>
-                        <p><strong>Status:</strong> <span class="status ${statusClass}">${statusText}</span></p>
-                        <div>
-                            <button class="btn btn-open" onclick="openFile('${doc.filename}')">📂 Open File</button>
-                            <button class="btn btn-approve" onclick="approve('${doc.filename}')">✅ Approve</button>
-                            <button class="btn btn-decline" onclick="decline('${doc.filename}')">❌ Decline</button>
+                        <div class="card-header">
+                            <div>
+                                <h3>${escapeHtml(doc.title)}</h3>
+                                <span class="tracking-id">Ref: ${doc.tracking_id}</span>
+                            </div>
+                            <span class="status ${statusClass}">${statusText}</span>
+                        </div>
+                        <p class="card-desc">${escapeHtml(doc.desc)}</p>
+                        <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 15px;">Department: ${doc.office}</p>
+                        <div class="action-group">
+                            <button class="btn btn-open" onclick="openFile('${doc.filename}')">View Document</button>
+                            <button class="btn btn-approve" onclick="approve('${doc.filename}')">Approve</button>
+                            <button class="btn btn-decline" onclick="decline('${doc.filename}')">Decline</button>
                         </div>
                     `;
                     container.appendChild(card);
@@ -204,9 +295,9 @@
     }
 
     function decline(filename) {
-        let reason = prompt("Please enter the reason for declining this document:");
+        let reason = prompt("Enter official reason for rejection:");
         if (reason === null) return;
-        if (reason.trim() === "") reason = "No reason provided";
+        if (reason.trim() === "") reason = "Documentation incomplete or incorrect";
         fetch(`/decline/${filename}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
