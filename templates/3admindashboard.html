@@ -1,10 +1,18 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Provincial Governor Office - Final Approval</title>
     <style>
+        :root {
+            --executive-navy: #0f172a;
+            --border-gray: #e2e8f0;
+            --bg-light: #f8fafc;
+            --text-dark: #1e293b;
+            --accent-gold: #94a3b8; /* Professional muted accent */
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,130 +20,193 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f1f5f9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
             display: flex;
             min-height: 100vh;
         }
 
+        /* Sidebar - Executive Slate */
         .sidebar {
             width: 280px;
-            background: linear-gradient(180deg, #0f172a, #1e293b);
+            background: var(--executive-navy);
             color: white;
-            padding: 30px 20px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.05);
         }
 
-        .sidebar h2 {
-            font-size: 1.6rem;
-            margin-bottom: 10px;
+        .sidebar-brand {
+            padding: 40px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
-        .sidebar p {
-            font-size: 0.85rem;
-            color: #94a3b8;
-            margin-bottom: 40px;
+        .sidebar-brand h2 {
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .sidebar-brand p {
+            font-size: 0.75rem;
+            color: var(--accent-gold);
+            margin-top: 5px;
+        }
+
+        .sidebar-links {
+            padding: 20px 15px;
+            flex-grow: 1;
         }
 
         .sidebar a {
-            display: block;
-            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            color: #f1f5f9;
             text-decoration: none;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 12px;
+            padding: 12px 15px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 0.9rem;
             transition: 0.2s;
         }
 
         .sidebar a:hover {
-            background: #334155;
+            background: rgba(255,255,255,0.05);
             color: white;
         }
 
+        /* Main Workspace */
         .main {
             flex: 1;
-            padding: 30px 40px;
-            overflow-x: auto;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .header {
-            background: white;
-            padding: 20px 25px;
-            border-radius: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-bottom: 2px solid var(--executive-navy);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
         }
 
         .header h1 {
-            font-size: 1.8rem;
-            color: #0f172a;
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--executive-navy);
         }
 
+        .header p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        /* Office Document Card */
         .card {
             background: white;
-            border-radius: 20px;
-            padding: 20px;
+            border: 1px solid var(--border-gray);
+            border-radius: 4px;
+            padding: 24px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            border-left: 6px solid #ec489a;
-            transition: 0.2s;
+            position: relative;
+            transition: border-color 0.2s;
         }
 
         .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border-color: #cbd5e1;
         }
 
         .card h3 {
-            margin-bottom: 10px;
-            color: #1e293b;
+            font-size: 1.1rem;
+            color: var(--executive-navy);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .card h3::before {
+            content: "";
+            width: 4px;
+            height: 18px;
+            background: #0ea5e9;
+            margin-right: 12px;
+            border-radius: 2px;
         }
 
         .card p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin: 10px 0;
             color: #475569;
-            margin: 8px 0;
         }
 
+        .meta-line {
+            font-size: 0.8rem !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8 !important;
+            margin-top: 20px !important;
+        }
+
+        /* Status Badges - Professional Flat Look */
         .status {
-            font-weight: bold;
+            font-weight: 700;
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 2px;
+            text-transform: uppercase;
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
             margin: 10px 0;
         }
 
-        .status-pending { background: #fef9c3; color: #854d0e; }
-        .status-approved { background: #dcfce7; color: #166534; }
-        .status-declined { background: #fee2e2; color: #991b1b; }
+        .status-pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .status-approved { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .status-declined { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: 600;
-            margin-right: 10px;
-            transition: 0.2s;
+        /* Action Buttons */
+        .btn-container {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-gray);
         }
 
-        .btn-open { background: #ec489a; color: white; }
-        .btn-approve { background: #22c55e; color: white; }
-        .btn-decline { background: #ef4444; color: white; }
+        .btn {
+            padding: 10px 20px;
+            border: 1px solid var(--border-gray);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 8px;
+            transition: all 0.2s;
+            background: white;
+        }
 
-        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-open { color: var(--executive-navy); }
+        .btn-open:hover { background: #f1f5f9; }
+
+        .btn-approve { background: var(--executive-navy); color: white; border: none; }
+        .btn-approve:hover { background: #1e293b; }
+
+        .btn-decline { color: #dc2626; border-color: #fecaca; }
+        .btn-decline:hover { background: #fef2f2; }
 
         .empty-state {
             text-align: center;
-            padding: 60px;
+            padding: 100px 40px;
             background: white;
-            border-radius: 24px;
-            color: #64748b;
+            border: 1px dashed var(--border-gray);
+            color: #94a3b8;
+            font-size: 0.9rem;
         }
 
         @media (max-width: 768px) {
             body { flex-direction: column; }
-            .sidebar { width: 100%; text-align: center; }
+            .sidebar { width: 100%; border-bottom: 1px solid rgba(255,255,255,0.1); }
             .main { padding: 20px; }
         }
     </style>
@@ -143,16 +214,25 @@
 <body>
 
 <div class="sidebar">
-    <h2>🏛️ Provincial Governor</h2>
-    <p>Final Approval Authority</p>
-    <a href="/logout">🚪 Logout</a>
+    <div class="sidebar-brand">
+        <h2>Office of the Governor</h2>
+        <p>Executive Dashboard</p>
+    </div>
+    <div class="sidebar-links">
+        <a href="#">📋 Active Reviews</a>
+        <a href="#">📂 Archive</a>
+        <a href="/logout">🚪 System Sign-out</a>
+    </div>
 </div>
 
 <div class="main">
     <div class="header">
-        <h1>Documents for Final Review</h1>
-        <p>Mayor-approved documents awaiting governor decision</p>
+        <div>
+            <h1>Final Document Review</h1>
+            <p>Verification and finalization of local government files.</p>
+        </div>
     </div>
+    
     <div id="docList"></div>
 </div>
 
@@ -163,28 +243,31 @@
             .then(data => {
                 const container = document.getElementById('docList');
                 if (!data.length) {
-                    container.innerHTML = '<div class="empty-state">📭 No documents forwarded from Mayor yet.</div>';
+                    container.innerHTML = '<div class="empty-state">No documents currently pending final executive review.</div>';
                     return;
                 }
                 container.innerHTML = '';
                 data.forEach(doc => {
                     let statusClass = 'status-pending';
-                    let statusText = doc.status || 'PENDING';
+                    let statusText = doc.status || 'PENDING REVIEW';
                     if (doc.status.includes('APPROVED')) statusClass = 'status-approved';
                     if (doc.status.includes('DECLINED')) statusClass = 'status-declined';
 
                     const card = document.createElement('div');
                     card.className = 'card';
                     card.innerHTML = `
-                        <h3>${escapeHtml(doc.title)}</h3>
-                        <p><strong>Tracking ID:</strong> ${doc.tracking_id}</p>
+                        <div style="display:flex; justify-content: space-between; align-items: flex-start;">
+                            <h3>${escapeHtml(doc.title)}</h3>
+                            <span class="status ${statusClass}">${statusText}</span>
+                        </div>
+                        <p><strong>Tracking ID:</strong> <code>${doc.tracking_id}</code></p>
                         <p>${escapeHtml(doc.desc)}</p>
-                        <p><strong>Submitted to:</strong> ${doc.office}</p>
-                        <p><strong>Status:</strong> <span class="status ${statusClass}">${statusText}</span></p>
-                        <div>
-                            <button class="btn btn-open" onclick="openFile('${doc.filename}')">📂 Open File</button>
-                            <button class="btn btn-approve" onclick="approve('${doc.filename}')">✅ Approve</button>
-                            <button class="btn btn-decline" onclick="decline('${doc.filename}')">❌ Decline</button>
+                        <p class="meta-line">Originating Office: ${doc.office}</p>
+                        
+                        <div class="btn-container">
+                            <button class="btn btn-open" onclick="openFile('${doc.filename}')">View Full Document</button>
+                            <button class="btn btn-approve" onclick="approve('${doc.filename}')">Grant Approval</button>
+                            <button class="btn btn-decline" onclick="decline('${doc.filename}')">Reject Submission</button>
                         </div>
                     `;
                     container.appendChild(card);
@@ -202,9 +285,9 @@
     }
 
     function decline(filename) {
-        let reason = prompt("Please enter the reason for declining this document:");
+        let reason = prompt("State official reason for rejection:");
         if (reason === null) return;
-        if (reason.trim() === "") reason = "No reason provided";
+        if (reason.trim() === "") reason = "Requirements not met";
         fetch(`/governor/decline/${filename}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
