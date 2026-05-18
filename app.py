@@ -108,11 +108,11 @@ class DocumentHandler(ABC):
     @abstractmethod
     def approve(self, document):
         pass
-    
+
     @abstractmethod
     def decline(self, document, reason):
         pass
-    
+
     @abstractmethod
     def get_office_name(self):
         pass
@@ -123,14 +123,14 @@ class BarangayHandler(DocumentHandler):
         document.status = "APPROVED BY BARANGAY"
         document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
-    
+
     def decline(self, document, reason):
         document.status = "DECLINED BY BARANGAY"
         document.decline_reason = reason
         document.declined_by = "Barangay Officials"
         document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
-    
+
     def get_office_name(self):
         return "Barangay Officials"
 
@@ -139,14 +139,14 @@ class MayorHandler(DocumentHandler):
         document.status = "APPROVED BY MAYOR"
         document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
-    
+
     def decline(self, document, reason):
         document.status = "DECLINED BY MAYOR"
         document.decline_reason = reason
         document.declined_by = "City Mayor"
         document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
-    
+
     def get_office_name(self):
         return "City Mayor"
 
@@ -155,14 +155,14 @@ class GovernorHandler(DocumentHandler):
         document.status = "APPROVED BY GOVERNOR (FINAL)"
         document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
-    
+
     def decline(self, document, reason):
         document.status = "DECLINED BY GOVERNOR"
         document.decline_reason = reason
         document.declined_by = "Provincial Governor"
         document.process_end_time = get_ph_time()  # [TIME] stop timer
         db.session.commit()
-    
+
     def get_office_name(self):
         return "Provincial Governor"
 
@@ -171,11 +171,11 @@ class DocumentService:
     @staticmethod
     def generate_tracking_id():
         return f"TRK-{random.randint(10000,99999)}"
-    
+
     @staticmethod
     def allowed_file(filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-    
+
     @staticmethod
     def save_upload(file, title, desc, office, username):
         filename = secure_filename(file.filename)
@@ -203,7 +203,7 @@ class DocumentService:
         db.session.add(doc)
         db.session.commit()
         return doc
-    
+
     @staticmethod
     def get_documents_by_office(office_name, exclude_statuses):
         if office_name == "Barangay Officials":
@@ -218,7 +218,7 @@ class DocumentService:
             Document.target_office == office_col,
             ~Document.status.in_(exclude_statuses)
         ).all()
-    
+
     @staticmethod
     def forward_to_next_office(tracking_id, current_status, new_target, new_status):
         doc = Document.query.filter_by(tracking_id=tracking_id, status=current_status).first()
@@ -254,7 +254,7 @@ class AuthService:
         db.session.add(user)
         db.session.commit()
         return assigned_id, None
-    
+
     @staticmethod
     def login_user(username, unique_id):
         user = User.query.filter_by(username=username, unique_id=unique_id).first()
@@ -302,17 +302,17 @@ def register():
         age = request.form.get('age')
         gender = request.form.get('gender')
         zip_code = request.form.get('zip')
-        
+
         if not all([username, email, age, gender, zip_code]):
             return "All fields are required. <a href='/register'>Go back</a>"
-        
+
         assigned_id, error = AuthService.register_user(username, email, age, gender, zip_code)
         if error:
             return f"{error} <a href='/register'>Try again</a>"
-        
+
         flash(f'Registration successful! Your Unique ID is: {assigned_id}. Please log in.', 'success')
         return redirect(url_for('login'))
-    
+
     return render_template('signup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -503,4 +503,4 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
