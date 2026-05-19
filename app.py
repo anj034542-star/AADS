@@ -28,15 +28,19 @@ def get_ph_time():
     return datetime.now(ZoneInfo('Asia/Manila'))
 
 # ------------------ MODELS WITH ENCAPSULATION ------------------
+# === ABSTRACT BASE MODEL (using SQLAlchemy's __abstract__) ===
 class BaseModel(db.Model):
-    __abstract__ = True
+    __abstract__ = True   # This makes it an abstract base class (cannot be instantiated alone)
 
+    # === POLYMORPHIC METHOD (to be overridden or used as-is) ===
     def to_dict(self):
         """Common serialization method (polymorphic)."""
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
+# === CLASS: User (inherits from BaseModel) ===
 class User(BaseModel):
     __tablename__ = 'users'
+    # === CONSTRUCTOR (inherited from db.Model, but we define columns) ===
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     unique_id = db.Column(db.String(50), unique=True, nullable=False)
@@ -46,6 +50,7 @@ class User(BaseModel):
     gender = db.Column(db.String(10), nullable=False)
     zip_code = db.Column(db.String(10), nullable=False)
 
+    # === PROPERTY (encapsulation: controlled access to username) ===
     @property
     def full_name(self):
         return self.username
@@ -53,6 +58,7 @@ class User(BaseModel):
     def __repr__(self):
         return f"<User {self.username}>"
 
+# === CLASS: Admin (inherits from BaseModel) ===
 class Admin(BaseModel):
     __tablename__ = 'admins'
     id = db.Column(db.Integer, primary_key=True)
@@ -63,6 +69,7 @@ class Admin(BaseModel):
     def __repr__(self):
         return f"<Admin {self.username} ({self.office})>"
 
+# === CLASS: Document (inherits from BaseModel) ===
 class Document(BaseModel):
     __tablename__ = 'documents'
     id = db.Column(db.Integer, primary_key=True)
@@ -77,12 +84,11 @@ class Document(BaseModel):
     declined_by = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     uploaded_by = db.Column(db.String(80))
-    # [TIME] New columns for processing time tracking
     process_start_time = db.Column(db.DateTime, nullable=True)
     process_end_time = db.Column(db.DateTime, nullable=True)
 
+    # === POLYMORPHISM: overriding to_dict() from BaseModel ===
     def to_dict(self):
-        # [TIME] Include start/end times and compute duration in seconds
         duration = None
         if self.process_start_time and self.process_end_time:
             delta = self.process_end_time - self.process_start_time
@@ -104,6 +110,7 @@ class Document(BaseModel):
         }
 
 # ------------------ ABSTRACT BASE CLASS FOR DOCUMENT HANDLERS ------------------
+# === ABSTRACT CLASS (ABC) ===
 class DocumentHandler(ABC):
     @abstractmethod
     def approve(self, document):
@@ -118,55 +125,60 @@ class DocumentHandler(ABC):
         pass
 
 # ------------------ CONCRETE HANDLERS (INHERITANCE & POLYMORPHISM) ------------------
+# === INHERITANCE: BarangayHandler inherits from DocumentHandler ===
 class BarangayHandler(DocumentHandler):
+    # === POLYMORPHISM: implementing abstract methods ===
     def approve(self, document):
         document.status = "APPROVED BY BARANGAY"
-        document.process_end_time = get_ph_time()  # [TIME] stop timer
+        document.process_end_time = get_ph_time()
         db.session.commit()
 
     def decline(self, document, reason):
         document.status = "DECLINED BY BARANGAY"
         document.decline_reason = reason
         document.declined_by = "Barangay Officials"
-        document.process_end_time = get_ph_time()  # [TIME] stop timer
+        document.process_end_time = get_ph_time()
         db.session.commit()
 
     def get_office_name(self):
         return "Barangay Officials"
 
+# === INHERITANCE: MayorHandler inherits from DocumentHandler ===
 class MayorHandler(DocumentHandler):
     def approve(self, document):
         document.status = "APPROVED BY MAYOR"
-        document.process_end_time = get_ph_time()  # [TIME] stop timer
+        document.process_end_time = get_ph_time()
         db.session.commit()
 
     def decline(self, document, reason):
         document.status = "DECLINED BY MAYOR"
         document.decline_reason = reason
         document.declined_by = "City Mayor"
-        document.process_end_time = get_ph_time()  # [TIME] stop timer
+        document.process_end_time = get_ph_time()
         db.session.commit()
 
     def get_office_name(self):
         return "City Mayor"
 
+# === INHERITANCE: GovernorHandler inherits from DocumentHandler ===
 class GovernorHandler(DocumentHandler):
     def approve(self, document):
         document.status = "APPROVED BY GOVERNOR (FINAL)"
-        document.process_end_time = get_ph_time()  # [TIME] stop timer
+        document.process_end_time = get_ph_time()
         db.session.commit()
 
     def decline(self, document, reason):
         document.status = "DECLINED BY GOVERNOR"
         document.decline_reason = reason
         document.declined_by = "Provincial Governor"
-        document.process_end_time = get_ph_time()  # [TIME] stop timer
+        document.process_end_time = get_ph_time()
         db.session.commit()
 
     def get_office_name(self):
         return "Provincial Governor"
 
 # ------------------ SERVICE CLASSES (ENCAPSULATION) ------------------
+# === CLASS: DocumentService (with static methods = encapsulation of document logic) ===
 class DocumentService:
     @staticmethod
     def generate_tracking_id():
@@ -189,6 +201,7 @@ class DocumentService:
             counter += 1
         file.save(filepath)
         tracking_id = DocumentService.generate_tracking_id()
+        # === OBJECT CREATION: instance of Document ===
         doc = Document(
             tracking_id=tracking_id,
             title=title,
@@ -198,7 +211,7 @@ class DocumentService:
             filename=filename,
             status='PENDING',
             uploaded_by=username,
-            process_start_time=get_ph_time()  # [TIME] start timer on upload
+            process_start_time=get_ph_time()
         )
         db.session.add(doc)
         db.session.commit()
@@ -229,6 +242,7 @@ class DocumentService:
             return True
         return False
 
+# === CLASS: AuthService ===
 class AuthService:
     @staticmethod
     def register_user(username, email, age, gender, zip_code):
@@ -249,6 +263,7 @@ class AuthService:
                                      "UID-264-SY-5093", "UID-496-UT-6721", "UID-141-WA-9567",
                                      "UID-685-GP-3084", "UID-329-EC-7835", "UID-954-MZ-4002",
                                      "UID-470-AH-6378", "UID-613-DJ-1594", "UID-226-RO-2460"])
+        # === OBJECT CREATION: instance of User ===
         user = User(username=username, unique_id=assigned_id, role='Resident',
                     email=email, age=int(age), gender=gender, zip_code=zip_code)
         db.session.add(user)
@@ -282,6 +297,7 @@ with app.app_context():
     }
     for username, data in default_admins.items():
         if not Admin.query.filter_by(username=username).first():
+            # === OBJECT CREATION: instance of Admin ===
             db.session.add(Admin(username=username, unique_id=data["unique_id"], office=data["office"]))
     db.session.commit()
 
@@ -418,8 +434,10 @@ def office3_documents():
     docs = DocumentService.get_documents_by_office("Provincial Governor", ["APPROVED BY GOVERNOR (FINAL)", "DECLINED BY GOVERNOR"])
     return jsonify([doc.to_dict() for doc in docs])
 
+# === Factory function returning appropriate handler (polymorphism) ===
 def get_handler_for_office(office_name):
     if office_name == "Barangay Officials":
+        # === OBJECT CREATION: BarangayHandler instance ===
         return BarangayHandler()
     elif office_name == "City Mayor":
         return MayorHandler()
@@ -432,7 +450,7 @@ def approve_brgy(filename):
     doc = Document.query.filter_by(filename=filename).first()
     if doc:
         handler = get_handler_for_office("Barangay Officials")
-        handler.approve(doc)
+        handler.approve(doc)   # Polymorphic call
         return jsonify({"success": True})
     return jsonify({"error": "Not found"})
 
